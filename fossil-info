@@ -1,0 +1,10 @@
+project-name: bdBuild
+repository:   /home/rcgill/fossils/bdBuild.fossil
+local-root:   /usr/home/rcgill/git-mirrors/bdBuild/work/
+project-code: 5e66e406d112e9adee6d4a0ad02a58dc760e1143
+server-code:  4a96ae05c57ab87127b9972cb6c97e51bce21dd8
+checkout:     f38ec4e0a3770dbee94aac45fb6774312015a648 2010-12-16 06:38:38 UTC
+parent:       f993e32a17eaf15675897081df3d1b5346d3a133 2010-12-14 02:22:34 UTC
+child:        fe99085cc25162c705a1e4b74322533b794683eb 2010-12-17 09:42:53 UTC
+tags:         trunk
+comment:      interim (user: rcgill)

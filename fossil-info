@@ -3,8 +3,8 @@ repository:   /home/rcgill/fossils/bdBuild.fossil
 local-root:   /usr/home/rcgill/git-mirrors/bdBuild/work/
 project-code: 5e66e406d112e9adee6d4a0ad02a58dc760e1143
 server-code:  4a96ae05c57ab87127b9972cb6c97e51bce21dd8
-checkout:     fe99085cc25162c705a1e4b74322533b794683eb 2010-12-17 09:42:53 UTC
-parent:       f38ec4e0a3770dbee94aac45fb6774312015a648 2010-12-16 06:38:38 UTC
-child:        d4fd15c0aea4e332ca0921de300129833a65d566 2010-12-17 20:16:49 UTC
+checkout:     d4fd15c0aea4e332ca0921de300129833a65d566 2010-12-17 20:16:49 UTC
+parent:       fe99085cc25162c705a1e4b74322533b794683eb 2010-12-17 09:42:53 UTC
+child:        c30ec02460e5bc1cd5c2e2db80bef7d4d74348b4 2010-12-22 02:07:31 UTC
 tags:         trunk
 comment:      building loader; reading real build scripts (user: rcgill)

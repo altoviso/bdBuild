@@ -35,8 +35,5 @@ bdBuild is free and open source software available under a BSD-style license.
 
 [bdParse](https://github.com/altoviso/bdParse) (a javascript parser, implemented in javascript)
 
-[bdLoad](https://github.com/altoviso/bdLoad) (the backdraft loader)
-
-
 
 

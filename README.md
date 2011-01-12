@@ -21,7 +21,7 @@ used with any html/javascript application.
 
 ## Status
 
-bdBuild is currently pre-alpha. Expect an alpha release in Jan 2010.
+bdBuild is currently pre-alpha. Expect an alpha release in Jan 2011.
 
 ## License
 

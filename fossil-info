@@ -3,8 +3,8 @@ repository:   /home/rcgill/fossils/bdBuild.fossil
 local-root:   /usr/home/rcgill/git-mirrors/bdBuild/work/
 project-code: 5e66e406d112e9adee6d4a0ad02a58dc760e1143
 server-code:  4a96ae05c57ab87127b9972cb6c97e51bce21dd8
-checkout:     3143c37163a66fee375bcc63c128ab2c872ac605 2011-01-12 03:15:25 UTC
-parent:       0cbb11fd8467f5cfce0bb7e48468e5042d747746 2011-01-03 02:45:11 UTC
+checkout:     cb654e9b084ca2781fe5d378207b5fd6493c1634 2011-01-12 04:52:12 UTC
+parent:       3143c37163a66fee375bcc63c128ab2c872ac605 2011-01-12 03:15:25 UTC
+child:        ad37f631dd657277e868f99bf14a93add6ac294c 2011-01-12 05:01:25 UTC
 tags:         trunk
-comment:      added readme, license; refactored packageJob to use bdLoad
-              routines (user: rcgill)
+comment:      fixed typo (user: rcgill)

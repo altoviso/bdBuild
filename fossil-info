@@ -3,9 +3,7 @@ repository:   /home/rcgill/fossils/bdBuild.fossil
 local-root:   /usr/home/rcgill/git-mirrors/bdBuild/work/
 project-code: 5e66e406d112e9adee6d4a0ad02a58dc760e1143
 server-code:  4a96ae05c57ab87127b9972cb6c97e51bce21dd8
-checkout:     cac176a209bcf1aa5a7b2212822e2ed457dfa869 2011-02-01 08:55:01 UTC
-parent:       a058e37cefaace4b1687f5c7c7149a4fbc22119f 2011-01-31 09:52:16 UTC
+checkout:     715bc4e5c41ed83e3b8a49ce34ab8383c0affe20 2011-02-04 10:01:58 UTC
+parent:       cac176a209bcf1aa5a7b2212822e2ed457dfa869 2011-02-01 08:55:01 UTC
 tags:         trunk
-comment:      changed package copyDirs to init to default iff explicit not
-              given; fixed bugs in configStringify, copyJob, i18n (user:
-              rcgill)
+comment:      added css compactor (user: rcgill)

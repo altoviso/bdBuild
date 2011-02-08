@@ -3,7 +3,9 @@ repository:   /home/rcgill/fossils/bdBuild.fossil
 local-root:   /usr/home/rcgill/git-mirrors/bdBuild/work/
 project-code: 5e66e406d112e9adee6d4a0ad02a58dc760e1143
 server-code:  4a96ae05c57ab87127b9972cb6c97e51bce21dd8
-checkout:     715bc4e5c41ed83e3b8a49ce34ab8383c0affe20 2011-02-04 10:01:58 UTC
-parent:       cac176a209bcf1aa5a7b2212822e2ed457dfa869 2011-02-01 08:55:01 UTC
+checkout:     cf1ff4d7ad070ebd0352ca0391c94245ef8155d5 2011-02-08 10:29:53 UTC
+parent:       715bc4e5c41ed83e3b8a49ce34ab8383c0affe20 2011-02-04 10:01:58 UTC
+child:        01b2dd2ec5a293c9ad7b5d4e5d4b93c76304295b 2011-02-11 09:42:14 UTC
 tags:         trunk
-comment:      added css compactor (user: rcgill)
+comment:      added CSS compact job; added default to real has.js impl (user:
+              rcgill)

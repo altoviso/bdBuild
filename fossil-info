@@ -3,8 +3,8 @@ repository:   /home/rcgill/fossils/bdBuild.fossil
 local-root:   /usr/home/rcgill/git-mirrors/bdBuild/work/
 project-code: 5e66e406d112e9adee6d4a0ad02a58dc760e1143
 server-code:  4a96ae05c57ab87127b9972cb6c97e51bce21dd8
-checkout:     619bbc9b07f0e2634d29fab01c9bfc45cc678a3a 2011-02-17 11:30:38 UTC
-parent:       da98087e3d41fed42068a6e679cf3551703bc36c 2011-02-17 10:18:57 UTC
-child:        df2678ab9a0422b9b0ab61bdd429657b3a730f9a 2011-02-17 11:45:58 UTC
+checkout:     df2678ab9a0422b9b0ab61bdd429657b3a730f9a 2011-02-17 11:45:58 UTC
+parent:       619bbc9b07f0e2634d29fab01c9bfc45cc678a3a 2011-02-17 11:30:38 UTC
+child:        00b50412cf5f560ef723a045cf4b53be28de4410 2011-02-18 21:59:12 UTC
 tags:         trunk
-comment:      interim; new control engine is working (user: rcgill)
+comment:      improved commentary (user: rcgill)

@@ -12,7 +12,6 @@
   ],
   
   trees:[
-    ["./css", "./css"],
-    ["/home/rcgill/dev/dojotoolkit", "./dojo", "*/.*"]
+    ["./css", "./css"]
   ]
 }

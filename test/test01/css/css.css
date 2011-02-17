@@ -1,0 +1,7 @@
+p.loading {
+  border:2px solid yellow;
+}
+
+p.complete {
+  border:2px solid green;
+}

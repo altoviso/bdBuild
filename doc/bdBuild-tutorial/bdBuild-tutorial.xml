@@ -389,5 +389,14 @@ transformJobMap:[
             provides defaults for these processes.The build control script also as given by the
             build control script. How this deleg</para>
         <para/>
+    </sect1>
+    <sect1>
+        <title>TO DOC</title>
+        <para>bc.baseUrl</para>
+        <para>kinds of cool transforms:</para>
+        <para>transform has feature names to integers; turn it into an array..</para>
+        <para>coverset detection of whole program to eliminate dead code</para>
+        <para>transform has.js to just get the tests needed; eliminate all calls to has amd
+            module</para>
         </sect1>
 </article>

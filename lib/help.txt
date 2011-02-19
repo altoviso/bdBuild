@@ -1,0 +1,32 @@
+Usage: node <path-to-bdBuild-package-root>/lib/main.js [options] 
+Options:
+  -v
+  --version                  print node's version
+
+  -b 
+  --build <filename>         process build control script
+
+  -r 
+  --require <filename>       process require configuration script
+
+  -s 
+  --base-path                set the source base path
+
+  --page-base-path           set the source page base path
+
+  -d 
+  --dest-base-path           set destination base path
+
+  -p 
+  --dest-package-base-path   set the destination packages base path
+
+  --check                    print computed build script and terminate
+
+  --help                     this help message
+
+See also
+ project home: http://bdframework.org/bdBuild/index
+ fossil: http://bdframework.org/bdBuild/repo
+ github: https://github.com/altoviso/bdBuild
+ docs: http://bdframework.org/bdBuild/docs
+y

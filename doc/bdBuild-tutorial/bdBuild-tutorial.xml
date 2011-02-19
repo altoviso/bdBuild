@@ -48,8 +48,8 @@
     <sect1>
         <title>Overview</title>
         <para>bdLoad is a program that transforms a set of resources that implement a browser-based
-            application to improve the load-time performance of that application. Two kinds of
-            transformations take place<itemizedlist>
+            application in order to improve the load-time performance of that application. Two kinds
+            of transformations take place<itemizedlist>
                 <listitem>
                     <para>The content of resources is analyzed and those portions not required are
                         removed. An example is removing comments from Javascript code.</para>
@@ -63,8 +63,8 @@
             transmission time. Further, depending upon the environment, the reduction in resource
             size may result in the user agent caching the resource, thereby completely eliminating
             download time. The second transform results in fewer server transactions which,
-            independent of bandwidth, always reduces the latenacy costs of loading an application.
-            This effect is particularly noticeable when the organization of the program results in a
+            independent of bandwidth, reduces the latenacy costs of loading an application. This
+            effect is particularly noticeable when the organization of the program results in a
             serial chain of downloads (for example module A requires module B, but the program
             doesn't know this until module A is evaluated).</para>
         <para>When we talk about transforming resources, clearly we are restricted to transforming
@@ -96,7 +96,7 @@
                     <para>Applying Javascript source code transforms: for example, if Javascript
                         source code uses has.js feature detection and certain features are known to
                         always or never exist, then the code bracketed by the has test can be either
-                        included or eliminated and the has test itself discaded.</para>
+                        included or eliminated and the has test itself discarded.</para>
                 </listitem>
                 <listitem>
                     <para>Generalized transforms: for example, applying a regular expression
@@ -112,13 +112,13 @@
                         execute static analysis and determine all dependencies of a particular
                         resource and then bundle all those dependencies into a single resource.
                         Examples are directly including CSS imports and bundling and AMD module
-                        dependency tree.</para>
+                        dependency trees.</para>
                 </listitem>
             </orderedlist>There are many possibilities with each kind of transformation and I'll
             discuss several in detail. </para>
-        <para>The overall design of bdBuild is quite simple. It simple reads a bunch of resources,
-            applies the transforms, and writes the results. The set of source resources., and
-            precise transformations to apply, and the destination are all controlled by a "build
+        <para>The overall design of bdBuild is quite simple. It simply reads a bunch of resources,
+            applies a set of transforms, and writes the results. The set of source resources.,
+            precise transformations to apply, and the destinations are all controlled by a "build
             control script"--a Javascript object that specifies all the tasks requested of bdBuild.
             So, in order to understand and use bdBuild, we must understand how to construct a build
             control script that. . .<orderedlist>
@@ -130,7 +130,7 @@
                         control particular transforms.</para>
                 </listitem>
                 <listitem>
-                    <para>Specifies the destination location of the output.</para>
+                    <para>Specifies the destinations of the output.</para>
                 </listitem>
             </orderedlist> The remainer of this article answers these questions..</para>
     </sect1>
@@ -262,16 +262,16 @@ baseTree:["/home/rcgill/dev/backdraft/demo/helloWorld", "../helloWorld-build"]</
             build control script that instructs bdBuild on the set of resources to be read,
             transformed, and written. The remainder of the program consists of a simple engine that
             reads each resource as prescribed and then delegates transformation and writing. The
-            delegation of transformation and writing is also controlled by the build control script
-            through the transformMap and transformJobMap properties.</para>
+            transformation and writing processes are controlled by the build control script through
+            the transformMap and transformJobMap properties.</para>
         <para>transformJobMap instructs bdBuild how to process resources. It consist of a array of
             pairs of predicate functions and arrays of transform names. The predicate functions
             accept a resource filename (complete with path) and return a boolean; the transform
             names are defined by transformMap as we'll see in a moment. As each resource is
-            discovered consequent to the packages, trees, dirs, or filenames build control
-            properties, its filename is applied to each predicate in the transformJobMap array. The
-            first predicate that returns true prescibes the set of transforms to apply to the
-            particular resource.</para>
+            discovered consequent to the packages, trees, dirs, or files build control properties,
+            its filename (including the path) is applied to each predicate in the transformJobMap
+            array. The first predicate that returns true prescibes the set of transforms to apply to
+            the particular resource.</para>
         <para>transformMap descibes transforms. It is a Javascript object that maps a transform name
             to an AMD module and bdBuild phase. As resources are read, transformed, and written,
             they pass through the following phases:<variablelist>

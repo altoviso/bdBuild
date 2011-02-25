@@ -40,14 +40,14 @@
         <abstract>
             <para>bdLoad is a program that analyzes and then optimizes a set of resources that
                 comprise a browser-based application in order to improve the load-time performance
-                of the application. This article describes the motivation, design, and use of
+                of that application. This article describes the motivation, design, and use of
                 bdLoad.</para>
             
         </abstract>
     </info>
     <sect1>
         <title>Overview</title>
-        <para>bdLoad is a program that transforms a set of resources that implement a browser-based
+        <para>bdLoad is a program that transforms a set of resources that comprise a browser-based
             application in order to improve the load-time performance of that application. Two kinds
             of transformations take place<itemizedlist>
                 <listitem>
@@ -116,23 +116,13 @@
                 </listitem>
             </orderedlist>There are many possibilities with each kind of transformation and I'll
             discuss several in detail. </para>
-        <para>The overall design of bdBuild is quite simple. It simply reads a bunch of resources,
-            applies a set of transforms, and writes the results. The set of source resources.,
-            precise transformations to apply, and the destinations are all controlled by a "build
-            control script"--a Javascript object that specifies all the tasks requested of bdBuild.
-            So, in order to understand and use bdBuild, we must understand how to construct a build
-            control script that. . .<orderedlist>
-                <listitem>
-                    <para>Specifies the set of source resources.</para>
-                </listitem>
-                <listitem>
-                    <para>Specifies which transforms to apply, possibly including parameters that
-                        control particular transforms.</para>
-                </listitem>
-                <listitem>
-                    <para>Specifies the destinations of the output.</para>
-                </listitem>
-            </orderedlist> The remainer of this article answers these questions..</para>
+        <para>The overall design of bdBuild is quite simple. It reads a bunch of resources, applies
+            transforms to those resources, and writes the results. The set of source resources.,
+            transformations to apply, and write destinations are all controlled by a "build control
+            script"--a Javascript object that specifies all the tasks requested of bdBuild. So, in
+            order to understand and use bdBuild, we must understand how to construct a build control
+            script that.</para>
+        <para>TODO</para>
     </sect1>
     <sect1>
         <title>Specifying Source and Destination Resources</title>
@@ -173,30 +163,90 @@
                     </listitem>
                 </varlistentry>
             </variablelist></para>
-        <para>Names may be either relative or absolute filenames.. Relative names are relative to
-            the build control script property <code>baseDir</code> or <code>baseTree</code>. You
-            should only specify one of these properties; if you happen to make a mistake and specify
-            both, <code>baseTree</code> is assumed. The value of <code>baseDir</code> or
-                <code>baseTree</code> may be either a string, specifying an absolute source pathname
-            or a pair of strings with the first string specifying an absolute source pathname and
-            the second string specifying the destination path name. The second string may be
-            relative to the first string; if it is missing, then it is computed by adding the suffix
-                "<code>-build</code>" to the first string. For example, the following three
-                <code>baseTree</code> specifications have identical
-            semantics:<programlisting>baseTree:"/home/rcgill/dev/backdraft/demo/helloWorld"
+        <para>Names may be either relative or absolute filenames.. Source names names are relative
+            to the build control script property <code>basePath</code>., and destination names are
+            relative to the build control script propety destBasePath. Frequently, baseBase is the
+            only absolute path provided in the build control script and all other paths are relative
+            to it. There are many ways to specify basePath:<orderedlist>
+                <listitem>
+                    <para>Via a the command line argument -base-path (see xxx).</para>
+                </listitem>
+                <listitem>
+                    <para>Via the build control script property build.basePath (see xxx)</para>
+                </listitem>
+                <listitem>
+                    <para>Via the build control script property basePath.</para>
+                </listitem>
+                <listitem>
+                    <para>Via the directory in which the build control script resides.</para>
+                </listitem>
+            </orderedlist>Let's pause a moment and describe the business about build.basePath
+            compared to basePath. A build control script can specifiy any property at the root level
+            or as a member of the build property; any property found off the build property takes
+            precedence. As we move deeper into our exploration of build control scripts, we'll see
+            that several properties have identical semantics to those properties in bdLoad
+            configuration objects. This isn't surprising since a bdLoad configuration object
+            instructions the loader which resources to load in order to execute an application just
+            as a build control script instructs bdBuild which resources comprise an application so
+            those resources can be optimized. The idea of bdBuild is to allow a single configuration
+            object to be maintained for both development loading and building. The build property in
+            an otherwise "normal" loader configuration object provides a place to stuff build
+            control script properties that are either not applicable to the loader or when you want
+            to override dev-time loader properties. I'll talk more about this when we see some real
+            examples in xxx.</para>
+        <para>So, with all these choices for specifying basePath, which is best? Usually, the best
+            is the easiest: don't specify it at all and let bdBuild figure it out from the directory
+            that hold the build control script. It's highly likely that you'll have your app under
+            version control, and you'll have an established standard for checking out your project
+            and any dependent projects from one or more repositories. In order words, you should be
+            able to go to some random location in some file hierarchy and checkout your project and
+            its dependents, and have all of the resources maintain the same relative position to
+            each other. If that's true, then specifying the source and destination for all of your
+            application's resources relative to one of those resources--the build control script--is
+            the way to go.</para>
+        <para>destBasePath is similarly specified:<orderedlist>
+                <listitem>
+                    <para>Via the command line argument -dest-base-path.</para>
+                </listitem>
+                <listitem>
+                    <para>Vis the build control script properties build.destBasePath</para>
+                </listitem>
+                <listitem>
+                    <para>Via the build control script property destBasePath</para>
+                </listitem>
+                <listitem>
+                    <para>By concatentating basePath with the value of the BC property
+                        destBasePathSuffix. If not provided directly, destBasePathSuffix defaults to
+                        "-build".</para>
+                </listitem>
+            </orderedlist></para>
+        <para>Again, the easiest thing to do is do nothing and let bdBuild choose the
+            default.</para>
+        <para>We have more than enough information to write our first build control script. Here it
+            is:
+<programlisting>
+{
+  files:[
+    ["./dir-to-optionally-copy/resource-to-optionally-copy-1.js", "./build2/dir-to-optionally-copy/resource-to-optionally-copy-1.js"]
+  ],
 
-baseTree:["/home/rcgill/dev/backdraft/demo/helloWorld", "/home/rcgill/dev/backdraft/demo/helloWorld-build"]
-
-baseTree:["/home/rcgill/dev/backdraft/demo/helloWorld", "../helloWorld-build"]</programlisting>Given
+  dirs:[
+    ["./js", "./build2/js"]
+  ],
+  
+  trees:[
+    ["./css", "./build2/css"]
+  ]
+}</programlisting>Given
             either <code>baseDir</code> or <code>baseTree</code>, relative sources names found in
                 <code>files</code>, <code>dirs</code>, and/or <code>trees</code> are relative to the
             absolute source pathname given by <code>baseDir</code> or <code>baseTree</code>;
             similarly, relative destination names are relative to the absolute destination pathname
-            given by <code>baseDir</code> or <code>baseTree</code>.  Lastly, in addition to
-            providing the base for relative names, specifying <code>baseTree</code> or
-                <code>baseDir</code> implies the named pairs are inserted into the
-                <code>trees</code> or <code>dirs</code> vectors respectively. Let's take a look at
-            an example build control script that contains some these
+            given by <code>baseDir</code> or <code>baseTree</code>. Lastly, in addition to providing
+            the base for relative names, specifying <code>baseTree</code> or <code>baseDir</code>
+            implies the named pairs are inserted into the <code>trees</code> or <code>dirs</code>
+            vectors respectively. Let's take a look at an example build control script that contains
+            some these
             elements:<programlisting>{
   baseDir:"/home/rcgill/dev/backdraft/demo/helloWorld",
   
@@ -398,5 +448,10 @@ transformJobMap:[
         <para>coverset detection of whole program to eliminate dead code</para>
         <para>transform has.js to just get the tests needed; eliminate all calls to has amd
             module</para>
+        <para>packageInfo.modules see discovery.processPacakge</para>
+        <para>dojoPragmaKwArgs</para>
+        <para>noDefaultPackage</para>
+        <para>&lt;check defaultBuildControl></para>
+        <para>closure does not do common subexpr elimination</para>
         </sect1>
 </article>

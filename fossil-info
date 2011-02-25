@@ -3,9 +3,8 @@ repository:   /home/rcgill/fossils/bdBuild.fossil
 local-root:   /usr/home/rcgill/git-mirrors/bdBuild/work/
 project-code: 5e66e406d112e9adee6d4a0ad02a58dc760e1143
 server-code:  4a96ae05c57ab87127b9972cb6c97e51bce21dd8
-checkout:     2612483d27a75aa11dcf22904bc783cabf69bdf7 2011-02-19 08:49:36 UTC
-parent:       13d4493444518cf996c9b15f6cfc59eb08f7e879 2011-02-19 08:23:15 UTC
-child:        e0d17958788d888e2c2e8686827aeeb5bbc3ca63 2011-02-24 21:01:16 UTC
+checkout:     e0d17958788d888e2c2e8686827aeeb5bbc3ca63 2011-02-24 21:01:16 UTC
+parent:       2612483d27a75aa11dcf22904bc783cabf69bdf7 2011-02-19 08:49:36 UTC
+child:        b605b1d84a34abe5dc2e53516249d3ca8771ea13 2011-02-25 10:06:38 UTC
 tags:         trunk
-comment:      renamed configStringify to stringify; improved stringify output
-              (user: rcgill)
+comment:      interim; refactor complete, building dojo (user: rcgill)

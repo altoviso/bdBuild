@@ -8,7 +8,7 @@
 ]>
 <article xmlns="http://docbook.org/ns/docbook" xmlns:xlink="http://www.w3.org/1999/xlink" version="5.0">
     <info>
-        <title>bdBuild</title>
+        <title>DRAFT -- bdBuild -- DRAFT</title>
         <subtitle>Tutorial and Reference Manual</subtitle>
         <copyright>
             <year>2011</year>
@@ -38,21 +38,30 @@
             <email> rgill@altoviso.com </email>
         </author>
         <abstract>
-            <para>bdLoad is a program that analyzes and then optimizes a set of resources that
-                comprise a browser-based application in order to improve the load-time performance
-                of that application. This article describes the motivation, design, and use of
-                bdLoad.</para>
+            <para>bdBuild is a program that optimizes a browser-based application in order to
+                improve the load-time performance of that application. At its core, bdBuild
+                implements a simple but elegant engine that marshals a set of resources through a
+                set of gates, causing pluggable, resource-dependent transforms to be applied as a
+                prerequisite to passing each gate. Since new/different transforms are pluggable, the
+                functionality of the program can be easily extended. Further, the engine allows the
+                transforms to be applied either synchronously or asynchronously. Employing
+                asynchronous transforms for tasks such as reading and writing data results in
+                extremely high performance. This article describes the motivation, design, and use
+                of bdBuild.</para>
             
         </abstract>
     </info>
-    <sect1>
+    <sect1 xml:id="overview">
         <title>Overview</title>
-        <para>bdLoad is a program that transforms a set of resources that comprise a browser-based
-            application in order to improve the load-time performance of that application. Two kinds
-            of transformations take place<itemizedlist>
+        <para>bdBuild is a general-purpose program for transforming resources. Although general
+            purpose, it was built to solve the problem of transforming a set of resources that
+            comprise a browser-based application in order to improve the load-time performance of
+            that application. For this particular application of bdBuild, two kinds of
+            transformations are typical:<itemizedlist>
                 <listitem>
-                    <para>The content of resources is analyzed and those portions not required are
-                        removed. An example is removing comments from Javascript code.</para>
+                    <para>The content of a resource is analyzed and those portions not required are
+                        removed. An example is applying dojo build pragmas to Javascript
+                        code.</para>
                 </listitem>
                 <listitem>
                     <para>Several resources may be bundled into a single resource so that a single
@@ -60,386 +69,1202 @@
                         combining several AMD module definitions into a single resource.</para>
                 </listitem>
             </itemizedlist> The first transform results in smaller resources which decreases
-            transmission time. Further, depending upon the environment, the reduction in resource
-            size may result in the user agent caching the resource, thereby completely eliminating
-            download time. The second transform results in fewer server transactions which,
-            independent of bandwidth, reduces the latenacy costs of loading an application. This
-            effect is particularly noticeable when the organization of the program results in a
-            serial chain of downloads (for example module A requires module B, but the program
-            doesn't know this until module A is evaluated).</para>
-        <para>When we talk about transforming resources, clearly we are restricted to transforming
-            resources that are static. Obviously, it would be pointless to bundle a bunch of
-            real-time stock quotes. For pure browser-based applications (that is, browser
-            applications that do not require some kind of plugin), four kinds of static resources
-            are typical:<orderedlist>
+            transmission time. Even better, depending upon the environment, the reduction in
+            resource size may result in the user agent caching the resource, thereby completely
+            eliminating download time. The second transform results in fewer server transactions
+            which, independent of bandwidth, reduces the latency costs of loading an application.
+            This effect is particularly noticeable when the organization of the program results in a
+            serial chain of downloads (for example, module A requires module B, but the program
+            doesn't know this until module A is evaluated). Using these techniques to optimize
+            non-trivial applications often results in improving load times by a factor of 10 or
+            more.</para>
+        <para>The semantics of any particular transform range from trivial to quite powerful.
+            bdBuild includes several transforms; these are described in <xref linkend="transforms"/>. Further, bdBuild is designed so that transforms may be easily constructed and
+            plugged into the transform engine.</para>
+        <para>The overall design of bdBuild is simple. It "discovers" a set of resources and applies
+            an ordered set of resource-dependent transforms to those resources. Both the discovery
+            process and the transforms are controlled by a "build control script" which is a
+            user-configurable Javascript object. I'll use the term acronym BCS instead of build
+            control script from now on. </para>
+        <para>bdBuild includes a discovery process that I'll describe in detail in the next section.
+            You can add additional discovery processes and/or remove the bdBuild-included discovery
+            process. For now, the important point is that there is some process that "discovers"
+            resources and then "starts" these resources in the configurable transformation
+            process.</para>
+        <para>When a resource is started, bdBuild queries the BCS for the set of transforms that
+            should be applied to that particular resource. The BCS includes the property
+                <code>transformJobs</code>, a vector of [predicate, transform vector] pairs. Each
+            started resource is applied to each predicate and the transform vector associated with
+            the first predicate that returns true gives the set of transforms to apply to that
+            particular resource.</para>
+        <para>Transforms are functions that take a resource and do some resource-dependent work.
+            Reading, applying dojo pragmas, parsing, static semantic analysis, and writing are all
+            examples of transforms. Obviously, transforms must be applied in a prescribed order (for
+            example, reading before writing). Further, some transforms may operate on multiple
+            resources that have already undergone a prescribed set of transforms. For these kinds of
+            transforms, bdBuild provides synchronization machinery to ensure that all resources have
+            completed transformation up to a prescribed step before any resource is allowed to
+            proceed to the next step. bdBuild calls these steps "gates". Any gate that is designated
+            such that all resources must pass the previous gate before any resource is allowed to
+            begin the designated gate is termed a "synchronized gate". Finally, bdBuild associates a
+            gate with each transform. </para>
+        <para>Let's consider an example. Suppose a set of resources caused the same predicate in the
+                <code>transformJobs</code> vector to return true and the transform vector associated
+            with that predicate was <code>[T1, T2, T3, T4].</code> Further assume <code>T1</code>
+            and <code>T2</code> are associated with the "read" gate, <code>T3</code> with the
+            "optimize" gate, and <code>T4</code> with the "write" gate, with the gate order set at
+            read-optimize-write and all gates being synchronized gates. In this case, bdBuild would
+            apply <code>T1</code> and <code>T2</code> to all resources (in that order), and ensure
+            all resources finished <code>T2</code> before any resource was allowed to begin
+                <code>T3</code>; similarly for <code>T3</code> and <code>T4</code>. Notice that
+            since <code>T1</code> and <code>T2</code> are associated with the same gate, bdBuild
+            will run <code>T2</code> on any resources immediately after <code>T1</code> has
+            completed for that resource without waiting for other resources to complete
+                <code>T1</code>. This is not true when proceeding to <code>T3</code> from
+                <code>T2</code>. Since <code>T3</code> is a synchronized gate, bdBuild will not
+            start any resource with <code>T3</code> until all resources have completed
+                <code>T2</code>.</para>
+        <para linkend="extending">Here's a summary of the design:<orderedlist>
                 <listitem>
-                    <para>Javascript source code</para>
+                    <para>Transforms are functions applied to resources.</para>
                 </listitem>
                 <listitem>
-                    <para>HTML documents and/or document fragments</para>
+                    <para>Each transform is associated with a gate; gates give the order transforms
+                        are applied.</para>
                 </listitem>
                 <listitem>
-                    <para>CSS style sheets</para>
+                    <para>Any gate may be designated as a synchronized gate; a synchronized gate
+                        causes all transforms associated with any previous gate to be completed
+                        before any transform is applied to any resource in the particular
+                        synchronized gate.</para>
                 </listitem>
                 <listitem>
-                    <para>Various kinds of text files (for example, templates or JSON)</para>
+                    <para><code>transformJobs</code> maps a particular resource to an ordered set of
+                        transforms to apply to that resource.</para>
+                </listitem>
+                <listitem>
+                    <para>Resources are discovered by a discovery process; once discovered, bdBuild
+                        applies each resource to the predicates in <code>transformJobs</code> to
+                        find the transforms to apply, and then controls the application of all
+                        prescribed transforms to all discovered resources until the last gate is
+                        passed and then terminates.</para>
+                </listitem>
+            </orderedlist>bdBuild is highly configurable: the discovery process(es), transforms,
+            transform-gate associations, and <code>transformJobs</code> are all configurable through
+            the BCS. bdBuild provides a default configuration so you won't have to bother with
+            configuring this machinery until and unless you want to do something special (see <xref
+                linkend="extending"/>). Now that you understand the basic operation of bdBuild,
+            let's get out of this design talk and start using it.</para>
+    </sect1>
+    <sect1>
+        <title>Discovering Resources</title>
+        <para>The default discovery process looks for a set of files, directories, directory trees,
+            and/or packages as specified by a BCS.. This section describes how to specify these
+            resources in a BCS</para>
+        <sect2 xml:id="files"><title>basePath, destBasePath, and Discovering Files</title>
+            <para>Let's start with a super-simple example: the following BCS discovers the file
+                    <filename>myModule.js</filename>:</para>
+            <para><programlisting>{
+  files:[
+    "myModule.js"
+  ]
+}</programlisting>Of course this
+                begs the question, "where should bdBuild look?". Before executing any discovery
+                process, bdBuild converts all file names and paths mentioned in the BCS to absolute
+                paths. Any source file name/path that is not given as an absolute path is taken to
+                be relative to the BCS property <code>basePath</code>. The same goes for destination
+                file names/paths and the BCS property <code>destBasePath</code>.
+                    <code>basePath</code> is computed as follows:<orderedlist>
+                    <listitem>
+                        <para>By the command line argument <code>--base-path</code>,
+                            otherwise...</para>
+                    </listitem>
+                    <listitem>
+                        <para>By the <code>basePath</code> property explicitly set in the BCS,
+                            otherwise...</para>
+                    </listitem>
+                    <listitem>
+                        <para>By the path that contains the BCS.</para>
+                    </listitem>
+                </orderedlist><code>destBasePath</code> is computed as...<orderedlist>
+                    <listitem>
+                        <para>By the command line argument <code>--dest-base-path</code>,
+                            otherwise...</para>
+                    </listitem>
+                    <listitem>
+                        <para>By the <code>destBasePath</code> property explicitly set in the BCS,
+                            otherwise...</para>
+                    </listitem>
+                    <listitem>
+                        <para>By appending <code>"-build"</code> to the value of
+                                <code>basePath</code>.</para>
+                    </listitem>
+                </orderedlist>The default discovery process associates a destination location with
+                each discovered resource. When an explicit destination location is not given, the
+                process converts the source filename to a destination filename by removing the
+                    <code>basePath</code> (if the filename begins with it) and adding the prefix
+                    <code>destBasePath</code>. So the BCS given above tries to discover the resource
+                    <filename>myModule.js</filename> at the location <emphasis role="italic">basePath</emphasis><filename>/myModule.js</filename>, and, if found, associates
+                the destination <emphasis role="italic">destBasepath</emphasis><filename>/myModule.js</filename> with the discovered
+                resource.</para>
+        <para>An explicit destination can be indicated by providing a pair of
+            names:<programlisting>{
+  files: [
+    ["myModule.js", "someDir/myModule.js"]
+  ]
+}</programlisting></para>
+        <para>This BCS discovers the resource <emphasis role="italic">basePath</emphasis><filename>/myModule.js</filename> and associates the
+                destination <emphasis role="italic">destBasePath</emphasis><filename>/someDir/myModule.js</filename> with that
+                resource. Let's run bdBuild and see this work.</para>
+        <para>The directory tree <filename>bdBuild/test/tutorial</filename> contains all the
+                resources used as examples in this tutorial. The first BCS shown above is located at
+                    <filename>bdBuild/test/tutorial/discovery/ex1.bcs.js</filename>. Let's have
+                bdBuild execute this BCS. Get a command prompt and navigate over to
+                    <filename>bdBuild/test/tutorial/discovery</filename> and execute the
+                command</para>
+            <para>
+                <screen>~/dev/bdBuild/test/tutorial/discovery> node ../../../lib/main.js -b ex1.bcs.js --base-path sample-project</screen>
+            </para>
+        <para>bdBuild is a <link xlink:href="http://nodejs.org">node.js</link> program and the
+                startup resource for bdBuild is <filename>bdBuild/lib/main.js</filename>, so node
+                    <filename>../../../lib/main.js</filename> simply causes node to execute bdBuild
+                (assuming the current working directory is
+                    <filename>bdBuild/test/tutorial/discovery</filename>). The command line argument
+                    <code>-b ex1.bcs.js</code> instructs bdBuild to execute the BCS
+                    <filename>ex1.bcs.js</filename>, and <code>--base-path</code> indicates the
+                    <code>basePath</code> value <code>"sample-project"</code>. Since
+                    <filename>sample-project</filename> is not an absolute path, it is taken to be
+                relative to the current working directory. If all goes well, the resource
+                    <filename>sample-project/myModule.js</filename> should be discovered and the
+                destination <filename>sample-project-build/myModules.js</filename> associated with
+                the discovered resource. As we'll see below, the default transformJobs will cause
+                the discovered resource to be copied to the destination location. You should see
+                bdBuild print the following output:</para>
+            <para>
+                <screen>discovering resources...
+reading resources...
+processing resource AST...
+executing global optimizations...
+writing resources...
+cleaning up...
+done
+Total build time: 0.167 seconds</screen>
+            </para>
+        <para>And if you navigate over to <filename>sample-project-build</filename>, you should see
+                that the resource <filename>myModule.js</filename> was indeed copied. Running
+                bdBuild on the second BCS example above (stored at <filename>ex2.bcs.js</filename>),
+                will cause <filename>myModule.js</filename> to be copied to
+                    <filename>sample-project-build/someDir/myModule.js</filename>.</para>
+        <para>If you specify a resource that doesn't exist, bdBuild will report and terminate. The
+                BCS at <filename>ex3.bcs.js</filename> includes such a resource; here is the
+                output:</para>
+        <para><screen>bdBuild/test/tutorial/discovery]$ node ../../../lib/main.js -b ex3.bcs.js --base-path sample-project
+discovering resources...
+reading resources...
+ERROR: error while transforming resource: /usr/home/rcgill/dev/bdBuild/test/tutorial/discovery/sample-project/NOT-EXIST-myModule.js
+transform: 0
+Error: ENOENT, No such file or directory '/usr/home/rcgill/dev/bdBuild/test/tutorial/discovery/sample-project/NOT-EXIST-myModule.js'
+</screen></para>
+        <para>The first error message gives the resource and transform that encountered a problem;
+                in this case, bdBuild encountered a problem with the resource
+                    <filename>NOT-EXIST-myModule.js</filename> during the first transform. The next
+                error message happens to be a node.js error message because node threw an ENOENT
+                (error-no-entity) exception when it tried to read the resource. This is as expected
+                since the resource does not exists. bdBuild attempts to provide copious feedback
+                when errors occur to help track down the problem.</para>
+        </sect2>
+        <sect2 xml:id="dirs"><title>Discovering Directories and Trees</title>
+        <para>Specifying an entire project one file at a time would become quite tedious. The BCS
+                properties <code>dirs</code> and <code>trees</code> specifies directories and
+                directory trees respectively. In the case of <code>dirs</code>, just the files
+                contained in the specified directories are discovered, while <code>trees</code>
+                discovers all files in the tree rooted as the specified directory. Both
+                    <code>dirs</code> and <code>trees</code> are vectors of items, and each item can
+                be a single name (a string) or a pair of [source, destination] names (strings)--just
+                like the files property described above. <code>dirs</code> and <code>trees</code>
+                items can also be a vector of more than two items. In this case, items in the vector
+                after the second item specify "exclusions"--patterns that are to be excluded from
+                discovery. Exclusions can be either strings, in which case they are treated as glob patterns<footnote>
+                    <para>In a glob pattern, <code>*</code> matches zero or more of any character,
+                            <code>?</code> matches any single character.</para>
+                </footnote> or regular expressions. Consider the following example (you can find
+                this at <filename>ex4.bcs.js</filename>):</para>
+            <para><programlisting>{
+  dirs:[
+    [".", ".", "*.bak"]
+  ],
+
+  trees:[
+    ["../../../../../bdParse", "bdParse", /\/(demo)|(test)\//]
+  ]
+}</programlisting>This
+                BCS discovers all resources in the <emphasis role="italic">basePath</emphasis>
+                directory, but excludes any filename that ends with <code>".bak"</code>; the
+                destination <emphasis role="italic"
+                    >destBasePath</emphasis><filename>/</filename><emphasis role="italic"
+                    >filename</emphasis> is associated with each discovered resource <emphasis
+                    role="italic">filename</emphasis>. Similarly, all resources in the
+                    <filename>bdParse</filename> tree, excluding any filename that includes either
+                    <code>"/demo/"</code> or <code>"/test/"</code>, are discovered and associated
+                with the destination <emphasis role="italic"
+                    >destBasePath</emphasis><filename>/bdParse</filename>. As in previous examples,
+                this BSD assumes that <code>basePath</code> is set to
+                    <filename>bdBuild/test/tutorial/discovery/sample-project</filename> and that
+                    <filename>bdParse</filename> is a sibling of <filename>bdBuild</filename>. This
+                results in the longish relative filename <code>"../../../../../bdParse"</code> to
+                resolve correctly. Notice how source and destination names are mapped for both
+                    <code>dirs</code> and <code>trees</code> items.: the source path is chopped off
+                and replaced with the destination path. Although the example provides a single item
+                for each of <code>dirs</code> and <code>trees</code>, and a single exclusion for
+                each item, any number of items and/or exclusions can be provided.</para>
+            </sect2><sect2><title>Discovering Packages</title>
+            <para>In addition to <code>files</code>, <code>dirs</code>, and <code>trees</code>, the
+                default discovery process can discover all the resources that comprise one or more
+                CommonJS packages by specifying a package configuration in the BCS just as you would
+                provide such a configuration to an AMD loader such as bdLoad. There are many
+                subtleties to package configuration; see <link
+                    xlink:href="http://bdframework.org/bdLoad/docs/bdLoad-tutorial/bdLoad-tutorial.html"
+                    >bdLoad - ﻿Tutorial and Reference Manual</link> for a detailed explanation.
+                Within the context of a BCS, a single package configuration item may define the
+                following properties:<variablelist>
+                    <varlistentry>
+                        <term>name</term>
+                        <listitem>
+                            <para>The name of the package. This is the only required
+                                property.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>location</term>
+                        <listitem>
+                            <para>The location of the package; in the context of a loader, this is a
+                                URL, in the context of bdBuild, this is a file path. Relative paths
+                                are relative to the property <code>basePackagePath</code> (see
+                                below). If not provided, defaults to <code>"./name"</code>.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>lib</term>
+                        <listitem>
+                            <para>A path fragment that, when concatenated with the location
+                                property, gives the location of the package modules. If not
+                                provided, defaults to <code>"lib"</code>.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>main</term>
+                        <listitem>
+                            <para>The name of the main module for the package. For example, for the
+                                package named <code>"myPackage"</code>, the main module is given by
+                                the AMD module identifier <code>"myPackage"</code> and this module
+                                will be located at <filename>location/lib/</filename><emphasis
+                                    role="italic">main</emphasis>. If not provided, default to
+                                    <code>"main"</code>.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>packageMap</term>
+                        <listitem>
+                            <para>A map from package name to package name (a Javascript object where
+                                each property is a package name and each property value is a package
+                                name). The map resolves package names as given by AMD module
+                                identifies contained in the packages modules to the package name
+                                known by the loader for the particular application. This allows two
+                                different packages to internally reference modules in two (or more)
+                                other packages with the same name, yet resolve these modules to
+                                physically different package locations. With this machinery,
+                                applications can use packages that are dependent on other packages
+                                that have a name clash. If not provided, defaults to a map that maps
+                                any package name to itself. This is a bdLoad extension to the
+                                CommonJS package specification; see <link
+                                    xlink:href="http://bdframework.org/bdLoad/docs/bdLoad-tutorial/bdLoad-tutorial.html"
+                                    >bdLoad</link> for details.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>pathTransforms</term>
+                        <listitem>
+                            <para>A vector of transform functions that take an AMD module identifier
+                                and map it to a URL (in the context of bdLoad) or a file path (in
+                                the context of bdBuild). If not provided, defaults to an empty
+                                vector. This is also a bdLoad extension to the CommonJS package
+                                specification; see <link
+                                    xlink:href="http://bdframework.org/bdLoad/docs/bdLoad-tutorial/bdLoad-tutorial.html"
+                                    >bdLoad</link> for details.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>files</term>
+                        <listitem>
+                            <para>Just like the BCS files property discussed in <xref
+                                    linkend="files"/> except that relative names are relative to the
+                                path given by the package location property. If not provided,
+                                defaults to an empty vector.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>dirs</term>
+                        <listitem>
+                            <para>Just like the BCS files property discussed in <xref linkend="dirs"
+                                /> except that relative names are relative to the path given by the
+                                package location property. If not provided, defaults to an empty
+                                vector.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>trees</term>
+                        <listitem>
+                            <para>Just like the BCS files property discussed in <xref linkend="dirs"
+                                /> except that relative names are relative to the path given by the
+                                package location property. If not provided, defaults to
+                                location/lib.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>modules</term>
+                        <listitem>
+                            <para>A vector of AMD module identifier names that should be explicitly
+                                discovered. If not provided, defaults to an empty vector.</para>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>As described above, the <code>location</code> property says where to
+                find the package contents.. When relative, the <code>location</code> is taken
+                relative to <code>basePath</code> during discovery and relative to the BCS property
+                    <code>destPackageBasePath</code> when determining a destination name for a
+                discovered resource. If <code>destPackageBasePath</code> is not provided, it
+                defaults to <emphasis role="italic"
+                    >destBasePath</emphasis><filename>/packages</filename>. Similarly, relative
+                source and destination paths in <code>files</code>, <code>dirs</code>, and
+                    <code>trees</code> are taken relative to <code>basePath</code> and
+                    <code>destPackageBasePath</code> respectively. </para>
+            <para>Packages can be specified by giving a <code>packages</code> property (a vector of
+                package configuration items) and/or by providing a <code>packagePaths</code>
+                property (a map from location prefix to vector of package configuration items).
+                Finally the CommonJS <code>paths</code> property (a map from AMD module identifier
+                prefix to URL/file path) may be included in a BCS. Here is a quick review of these
+                concepts by example:</para>
+            <para>
+                <programlisting>// packages is a vector of package items...
+packages:[
+  // an item can be a string...
+  "myPackage",
+  // which is equivalent to {name:"myPackage", location:"./myPackage", lib:"lib", main:"main"}
+
+  // or an under-specified object...
+  {name:"p2"}
+  // which is equivalent to {name:"p2", location:"./p2", lib:"lib", main:"main"}
+
+  // or a fully-specified object...
+  {
+    name:"p2",
+    location:"some/path/to/somewhere",
+    lib:"someDirectoryName",
+    main:"someModuleName"
+  }
+]
+
+// packagePaths is a map from location root to package items...
+packagePaths:{
+  "my/root":[
+    // each item in this vector is assumed to have location root of "my/root"
+
+  "myPackage",
+  // which is equivalent to {name:"myPackage", location:"my/root/myPackage", lib:"lib", main:"main"}
+
+  // or an under-specified object...
+  {name:"p2"}
+  // which is equivalent to {name:"p2", location:"my/root/p2", lib:"lib", main:"main"}
+
+  // or a fully-specified object...
+  {
+    name:"p2",
+    location:"some/path/to/somewhere", //therefore, location is ultimately my/root/some/path/to/somewhere
+    lib:"someDirectoryName",
+    main:"someModuleName"
+  }
+}
+</programlisting>
+            </para>
+            <para>Given a package configuration, the default discovery process will discover all
+                resources as given by <code>files</code>, <code>dirs</code>, and <code>trees</code>.
+                Further, the process will try to determine if each discovered resource is an AMD
+                module. It does this by extracting the module name from the filename, and then
+                submitting that module name to the standard loader module name to filename mapping
+                algorithm. This algorithm takes in to consideration all of the package configuration
+                properties and the package-independent <code>paths</code> property and maps the
+                module name to a URL (in the case of the loader) or a filename (in the case of
+                bdBuild). See <xref linkend="midMapping"/> for a detailed discussion of this
+                algorithm. If the mapping algorithm returns the same filename as was discovered,
+                then the resource is adjudicated to be an AMD module and the following properties
+                are included when the resource is created and started:<variablelist>
+                    <varlistentry>
+                        <term>src</term>
+                        <listitem>
+                            <para>the filename of the source (this is included in all
+                                resources)</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>dest</term>
+                        <listitem>
+                            <para>the destination for the resource (this is also included in all
+                                resources)</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>pid</term>
+                        <listitem>
+                            <para>(package identifier) the name of the package</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>mid</term>
+                        <listitem>
+                            <para>(module identifier) the AMD module name (without the package
+                                name)</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>pqn</term>
+                        <listitem>
+                            <para>(package-qualified name) "<emphasis role="italic">pid</emphasis>*<emphasis role="italic">mid</emphasis>"</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>path</term>
+                        <listitem>
+                            <para>full module identifier "<emphasis role="italic">pid</emphasis>/<emphasis role="italic">mid</emphasis>"</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>pack</term>
+                        <listitem>
+                            <para>a reference to the BCS package configuration</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term>deps</term>
+                        <listitem>
+                            <para>a vector that will hold the AMD dependencies for this module;
+                                initialized to <code>[]</code></para>
+                        </listitem>
+                    </varlistentry>
+                </variablelist></para>
+            <para>Various transforms may use this information to process the module.</para>
+            <para>Notice that the default discovery process will not find any module that doesn't
+                map directly to a filename relative to the package <code>lib</code> directory. For
+                example, in dojo version 1.6, the <code>text!</code> plugin module maps to
+                    <filename>dojo/lib/plugins/text</filename>. That is, the AMD module identifier
+                    <code>"text"</code>, not a member of any package, actually maps to a resource
+                that resides within the dojo package tree. A module that's "not a member of any
+                package" is said to be a member of the default package. The default package is a
+                modeling device and is loosely defined as all "modules" in the tree rooted at
+                    <code>basePath</code> that are not part of another package). bdBuild denotes the
+                default package with the package name <code>"*"</code>. So, to find the text module,
+                you must provide a package configuration that requests the text module explicitly as
+                part of the default package configuration and further indicates how to find that
+                module either through the package-dependent <code>pathTransforms</code> property of
+                the package-independent <code>paths</code> property. Here is an example using the
+                    <code>paths</code> property:</para>
+            <para>
+                <programlisting>paths:{
+  "i18n":"../../../dojotoolkit/dojo/lib/plugins/i18n",
+  "text":"../../../dojotoolkit/dojo/lib/plugins/text"
+},
+packages:[{
+  name:"*",
+  modules:{
+    i18n:1,
+    text:1
+  }
+}]</programlisting>
+            </para>
+            <para>This is part of the BCS for a backdraft demonstration and is submitted to bdBuild
+                with a basePath that causes <filename>../../../dojotoolkit</filename> to resolve to
+                the root of the dojo toolkit source distribution on the local file system. When
+                bdBuild tries to discover the <code>i18n</code> and <code>text</code> AMD modules
+                for the default package by traversing the <code>lib</code> tree, it won't find them
+                since they actually reside within the dojo. However, the discover process will then
+                explicitly attempt to discover the <code>i18n</code> and <code>text</code> modules
+                by submitting these module identifiers to the loader name to filename mapping
+                algorithm, which will direct the discovery process to the correct filenames in the
+                dojo tree.</para>
+            <para>Before we leave this section, let's pause a moment to make a high-level
+                observation: much of the information in a BCS serves the same purpose and is
+                specified in the same way as a loader configuration (for example, a bdLoad or
+                RequireJS configuration object). This isn't surprising since a loader configuration
+                informs the loader where to find resources just as a BCS informs bdBuild where to
+                find resources. Although there are several BCS configuration options that don't
+                apply to loaders, typically, you'll use your loader configuration as a starting
+                point for a BCS. We'll have more to say about construction BCSs in <xref
+                    linkend="bcs"/>.</para></sect2></sect1>
+    <sect1 xml:id="transforms"><title>Transforms</title>            <para>Now that we know how to specify the set of resources to transform, we need to
+    describe how to specify the transforms themselves.</para>
+        <sect2><title>Design and Implementation of Transform Functions</title>
+        <para>Transforms are AMD modules that have the value of a function with the signature
+                    <code>function(resource, callback)</code>, where resource is a resource object
+                as discovered by a discovery process, perhaps transformed by one or more previous
+                transforms. The transform function may return...<itemizedlist>
+                    <listitem>
+                        <para>falsy, to indicate the transform was executed synchronously and
+                            completed successfully</para>
+                    </listitem>
+                    <listitem>
+                        <para><code>callback</code>, to indicate the transform is executing
+                            asynchronously. Note carefully, the return is precisely
+                                <code>callback</code>, not an application of <code>callback</code>;
+                                <code>callback</code> is applied later to signal the completion of
+                            the asynchronous process.</para>
+                    </listitem>
+                    <listitem>
+                        <para>any other value, to indicate the transform failed</para>
+                    </listitem>
+                </itemizedlist></para>
+
+        <para>If the transform is implemented as an asynchronous process, then upon completion, the
+            transform must apply <code>callback</code> to <code>(resource, err)</code>, where
+                <code>resource</code> is the resource that was just transformed, and
+                <code>err</code> is falsy to indicate the transform completed successfully or any
+            other value to indicate the transform failed.</para>
+        <para>Here is an example of a simple synchronous transform:</para>
+        <para>
+            <programlisting>define(["../buildControl", "bdParse"], function(bc, bdParse) {
+  var 
+    filterComments= bdParse.filterComments,
+    parse= bdParse.parse;
+  return function(resource) {
+    try {
+      resource.tree= parse(filterComments(resource.tokens));
+      return 0;
+    } catch (e) {
+      bc.logError("failed to tokenize");
+      return e;
+    }
+  };
+});
+</programlisting>
+        </para>
+        <para>This is the jsParse transform that's included with bdBuild. The transform requires the
+            resource have already completed the jsTokenize transform that tokenizes a Javascript
+            resource and stores the token stream in the resource property <code>tokens</code>. The
+            transform uses two bdParse functions to parse the token stream into an abstract syntax
+            tree and stores the result in the resource property <code>tree</code>. If all goes well,
+            the transform returns <code>0</code>, indicating success; otherwise, any errors are
+            caught and returned. The transform signature doesn't mention the <code>callback</code>
+            parameter since it is synchronous and has no use for this parameter.</para>
+        <para>Here is an example of an asynchronous transform:</para>
+        <para><programlisting>define(["../buildControl", "../fileUtils", "fs", "../replace"], function(bc, fileUtils, fs, replace) {
+  return function(resource, callback) {
+    fileUtils.ensureDirectoryByFilename(resource.dest);
+    fs.writeFile(resource.dest, resource.getText(), resource.encoding, function(err) {
+      callback(resource, err);
+    });
+    return callback;
+  };
+});</programlisting>This
+            is the write transform that's included with bdBuild. The transform uses the node.js
+            asynchronous file system function <code>writeFile</code> to write the value of the
+            resource asynchronously. Since the transform is asynchronous, it returns the
+                <code>callback</code> parameter. When the asynchronous write completes, the
+                <code>callback</code> is applied to the resource and the error condition (zero if no
+            error).</para>
+        <para>Notice the high degree of orthogonality of these transforms. This makes simple
+                transforms trivial to implement and greatly simplifies difficult transforms.</para></sect2>
+        <sect2><title>Configuring Transforms</title><para>In order to employ a transform, it must be described in a BCS. The BCS property
+                    <code>transforms</code> gives a map from transform name (a string) to ordered
+                pair of <code>[</code><emphasis role="italic">AMD module
+                    identifier</emphasis><code>, </code><emphasis role="italic"
+                    >gate</emphasis><code>]</code> (both strings). AMD module identifier gives the
+                AMD module that implements the particular transform. Recall from <xref
+                    linkend="overview"/>, gates give an ordered sequence, and each transform is
+                associated with a single gate. Further, gates may be designated as "synchronized".
+                For a synchronized gate, all transforms associated with previous gates must be
+                completed for all resources before any resource is allowed to begin a transform
+                associated with the particular synchronized gate (or any later gate).</para>
+            <para>bdBuild defines the following gates:</para>
+            <para>
+                <table frame="all">
+                    <title>Default Gates</title>
+                    <tgroup cols="4">
+                        <colspec colname="c1" colnum="1" colwidth="1.3*"/>
+                        <colspec colname="c2" colnum="2" colwidth="1.0*"/>
+                        <colspec colname="c3" colnum="3" colwidth="1.55*"/>
+                        <colspec colname="c4" colnum="4" colwidth="12.37*"/>
+                        <thead>
+                            <row>
+                                <entry>Name</entry>
+                                <entry>Order</entry>
+                                <entry>Synchronized?</entry>
+                                <entry>Semantics</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>read</entry>
+                                <entry>1</entry>
+                                <entry>no</entry>
+                                <entry>read the resource</entry>
+                            </row>
+                            <row>
+                                <entry>text</entry>
+                                <entry>2</entry>
+                                <entry>no</entry>
+                                <entry>transform the raw resource text</entry>
+                            </row>
+                            <row>
+                                <entry>tokenize</entry>
+                                <entry>3</entry>
+                                <entry>no</entry>
+                                <entry>transform the raw resource text into a token stream</entry>
+                            </row>
+                            <row>
+                                <entry>tokens</entry>
+                                <entry>4</entry>
+                                <entry>no</entry>
+                                <entry>transform the token stream</entry>
+                            </row>
+                            <row>
+                                <entry>parse</entry>
+                                <entry>5</entry>
+                                <entry>no</entry>
+                                <entry>transform the token stream into an abstract syntax
+                                    tree</entry>
+                            </row>
+                            <row>
+                                <entry>ast</entry>
+                                <entry>6</entry>
+                                <entry>yes</entry>
+                                <entry>transform the abstract syntax tree</entry>
+                            </row>
+                            <row>
+                                <entry>optimize</entry>
+                                <entry>7</entry>
+                                <entry>yes</entry>
+                                <entry>global optimizations (transforms that analyze multiple
+                                    resources)</entry>
+                            </row>
+                            <row>
+                                <entry>write</entry>
+                                <entry>8</entry>
+                                <entry>yes</entry>
+                                <entry>write the resource</entry>
+                            </row>
+                            <row>
+                                <entry>cleanup</entry>
+                                <entry>9</entry>
+                                <entry>yes</entry>
+                                <entry>execute any post-write chores</entry>
+                            </row>
+                            <row>
+                                <entry>report</entry>
+                                <entry>10</entry>
+                                <entry>yes</entry>
+                                <entry>provide any process reports</entry>
+                            </row>
+                 
+                        </tbody>
+                    </tgroup>
+                </table>
+            </para>
+            <para>Here is the value of the default transforms property (I'll describe the semantics
+                of each transform next).</para>
+            <para>
+                <programlisting>transforms:{
+  read:["bdBuild/transforms/read", "read"],
+  dojoPragmas:["bdBuild/transforms/dojoPragmas", "read"],
+  jsTokenize:["bdBuild/transforms/jsTokenize", "tokenize"],
+  jsParse:["bdBuild/transforms/jsParse", "parse"],
+  has:["bdBuild/transforms/has", "ast"],
+  amd:["bdBuild/transforms/amd", "ast"],
+  write:["bdBuild/transforms/write", "write"],
+  writeAmd:["bdBuild/transforms/writeAmd", "write"],
+  readBdLoad:["bdBuild/transforms/readBdLoad", "read"],
+  writeBdLoad:["bdBuild/transforms/writeBdLoad", "write"],
+  compactCss:["bdBuild/transforms/compactCss", "optimize"],
+  writeCss:["bdBuild/transforms/writeCss", "write"]
+}</programlisting>
+            </para>
+            <para>The key point here is that the <code>transforms</code> property associates a name
+                (the transform name) with a particular transform function (as given by an AMD module
+                identifier) and further associates that function with a particular gate. As I'll
+                describe in <xref linkend="transformJobs"/>, <code>transformJobs</code> will
+                associate a set of transform names with a set of resources to which the set of
+                transforms should be applied..</para>
+        
+        </sect2>
+        <sect2><title>Transforms Supplied with bdBuild</title>
+        <para>Each of the transforms listed below is provided as part of the bdLoad standard
+                release.</para>
+        <para>Note: all resources are expected to contain the properties <code>src</code> and
+                <code>dest</code> which give the source and destination file name
+            respectively.</para>
+        <sect3><title>read (asynchronous)</title><para>Reads the contents of <code>resource.src</code> into <code>resource.text</code>. Encoding is
+                    determined by the file type suffix of <code>resource.src</code>. The following
+                    files types map to "utf8": css, html, htm, js, json, asc, c, cpp, log, conf,
+                    text, txt, dtd, xml; all other file types map to binary.</para>
+                <para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/read.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/read.js</link></para></sect3>
+        <sect3><title>dojoPragmas (synchronous)</title><para>Applies all Dojo pragmas. to resource.text. Dojo pragmas bracket a set of continuous lines of
+                    code by an opening and closing pragma with the following syntax:</para>
+                <para>
+                    <programlisting><emphasis role="italic">opening</emphasis>::= <emphasis role="bold">//>></emphasis> <emphasis role="italic">directive</emphasis> <emphasis role="italic">ws</emphasis>* <emphasis role="bold">(</emphasis> <emphasis role="italic">ws</emphasis>* <emphasis role="italic">quote</emphasis> <emphasis role="italic">id</emphasis> <emphasis role="italic">quote</emphasis> <emphasis role="italic">ws</emphasis>* <emphasis role="bold">,</emphasis> <emphasis role="italic">expr</emphasis> <emphasis role="italic">)</emphasis> <emphasis role="italic">eol</emphasis>
+<emphasis role="italic">closing</emphasis>::= <emphasis role="bold">//>></emphasis> <emphasis role="italic">directive</emphasis> <emphasis role="italic">ws</emphasis>* <emphasis role="bold">(</emphasis> <emphasis role="italic">ws</emphasis>* <emphasis role="italic">quote</emphasis> <emphasis role="italic">id</emphasis> <emphasis role="italic">quote</emphasis> <emphasis role="italic">ws</emphasis>* <emphasis role="italic">)</emphasis> <emphasis role="italic">eol</emphasis>
+<emphasis role="italic">directive</emphasis>::= <emphasis role="bold">excludeStart</emphasis> | <emphasis role="bold">includeStart</emphasis>
+<emphasis role="italic">ws</emphasis>::= <emphasis role="italic">white-space-but-not-new-line</emphasis>
+<emphasis role="italic">eol</emphasis>::= <emphasis role="italic">end-of-line</emphasis>
+<emphasis role="italic">quote</emphasis>::= <emphasis role="bold">"</emphasis> | <emphasis role="bold">'</emphasis>
+<emphasis role="italic">id</emphasis>::= [<emphasis role="bold">a-zA-Z0-9_</emphasis>]+
+<emphasis role="italic">expr</emphasis>::= <emphasis role="bold">javascript-expression</emphasis>
+
+</programlisting>
+                </para>
+                <para>When an opening pragma is found, a closing pragma with the same directive and
+                    id is expected to follow in the source code; and an opening pragma with no
+                    matching closing signals an error. When a matching closing is found, the
+                    expression given by the opening pragma is evaluated with the variables
+                        <code>filename</code> and <code>kwargs</code> in scope. Prior to evaluation,
+                        <code>filename</code> is set to the source filename of the resource and
+                        <code>kwargs</code> is set to the value of the BCS property
+                        <code>dojoPragmaKwArgs</code>. Source code lines may be deleted depending
+                    upon the directive and the result of evaluating the expression as
+                    follows:</para>
+                <para>
+                    <table frame="all">
+                        <title>Dojo Pragma Semantics</title>
+                        <tgroup cols="3">
+                            <colspec colname="c1" colnum="1" colwidth="1.0*"/>
+                            <colspec colname="c2" colnum="2" colwidth="1.36*"/>
+                            <colspec colname="c3" colnum="3" colwidth="7.64*"/>
+                            <thead>
+                                <row>
+                                    <entry>directive</entry>
+                                    <entry>value of expression</entry>
+                                    <entry>action</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>excludeStart</entry>
+                                    <entry>true</entry>
+                                    <entry>the bracketed lines are deleted</entry>
+                                </row>
+                                <row>
+                                    <entry>excludeStart</entry>
+                                    <entry>false</entry>
+                                    <entry>none</entry>
+                                </row>
+                                <row>
+                                    <entry>includeStart</entry>
+                                    <entry>true</entry>
+                                    <entry>none</entry>
+                                </row>
+                                <row>
+                                    <entry>includeStart</entry>
+                                    <entry>false</entry>
+                                    <entry>the bracketed lines are deleted</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </para>
+        <para>In all cases, the pragmas are deleted from the source text.</para>
+                <para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/dojoPragmas.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/dojoPragmas.js</link></para></sect3>
+        <sect3><title>jsTokenize (synchronous)</title><para>Tokenizes the resource and initializes machinery so that chunks of the resource can be easily
+                    specified for deletion.<itemizedlist>
+                        <listitem>
+                            <para>Splits <code>resource.text</code> into a vector of lines on each
+                                new-line detected in <code>resource.text</code>; replaces
+                                    <code>resource.text</code> with the result.</para>
+                        </listitem>
+                        <listitem>
+                            <para>Tokenizes <code>resource.text</code> with the bdParse tokenizer.
+                                and stores the result in <code>resource.tokens</code>.</para>
+                        </listitem>
+                        <listitem>
+                            <para>Initializes <code>resource.deleteList</code> to an empty vector;
+                                resource.deleteList is expected to be filled with zero to many
+                                bdParse <code>location</code> objects.</para>
+                        </listitem>
+                        <listitem>
+                            <para>Initializes  <code>resource.getText</code> with a method that
+                                applies <code>resource.deleteList</code> (expected to be a vector of
+                                bdParse <code>location</code> objects) to <code>resource.text</code>
+                                (expected to be a vector of strings).</para>
+                        </listitem>
+                    </itemizedlist></para><para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/jsTokenize.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/jsTokenize.js</link></para></sect3>
+        <sect3><title>jsParse (synchronous)</title><para>Parses <code>resource.tokens</code> into an abstract syntax tree with the bdParse parser, and
+            stores the result at <code>resource.tree</code>.</para><para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/jsParse.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/jsParse.js</link></para></sect3>
+        <sect3><title>has (synchronous)</title><para>Traverses <code>resource.tree</code> and looks for <code>has</code> applications. Any
+                        <code>has</code> applications that have a constant value in the BCS property
+                        <code>staticHasFlags</code> are evaluated and any resulting dead code is
+                    marked for deletion in the delete list provided by the jsTokenize
+                    transform.</para>
+            <para>Memorizes all has feature identifiers encountered in the BCS property
+                        <code>hasLocations</code> (a map from feature name to vector of locations
+                    that reference the feature). This map can later be used to optimize a has.js
+                    module to include only the feature tests referenced in the discovered
+                    resources.</para><para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/has.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/has.js</link></para></sect3>
+        <sect3><title>amd (synchronous)</title><para>Traverses <code>resource.tree</code> and looks for the application of the AMD
+                        <code>define</code> function that defines the module. If found, traverses
+                    the argument list to discover the dependency vector and then resolves each name
+                    into a resource. If a resource is not found (that is, the discovery process
+                    failed to discover all resources mentioned in the dependency vector of a
+                    discovered AMD module), then an error condition is signaled; otherwise,
+                        <code>resource.deps</code> is augmented to include all discovered
+            dependencies.</para><para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/amd.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/amd.js</link></para></sect3>
+        <sect3><title>write (asynchronous)</title><para>Writes the result of <code>resource.getText</code> to the file given by<code>
+                        resource.dest</code> using the encoding given by
+            <code>resource.encoding</code>.</para><para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/write.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/write.js</link></para></sect3>
+        <sect3><title>writeAmd (asynchronous)</title><para>If <code>resource.layer</code> is truthy, then writes the following modules to the file name
+                    given by <code>resource.dest</code>:<itemizedlist>
+                        <listitem>
+                            <para>the module given by the resource</para>
+                        </listitem>
+                        <listitem>
+                            <para>the dependency tree of the resource (typically, as computed by the
+                                amd transform)</para>
+                        </listitem>
+                        <listitem>
+                            <para>all modules given by <code>resource.layer.includes</code> and
+                                their dependency trees</para>
+                        </listitem>
+                        <listitem>
+                            <para>except that any resource in <code>resource.layer.excludes</code>
+                                together with any of their dependencies are <emphasis role="italic"
+                                    >not</emphasis> written</para>
+                        </listitem>
+                    </itemizedlist>The set of modules that is written is all the modules that would
+                    be downloaded by an AMD loader in order to load the resource and any module in
+                        <code>resource.layer.includes</code> after all the modules in
+                        <code>resource.layer.exlcudes</code> were already loaded.</para>
+                <para>If <code>resource.layer</code> is falsy, then simply writes the module to the
+                    file name given by <code>resource.dest</code>.</para><para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/writeAmd.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/writeAmd.js</link></para></sect3>
+            <sect3>
+                <title>readBdLoad (asynchronous)</title>
+                <para>Identical to the read transform except that prior to starting the asynchronous
+                    read, the BCS property <code>loader</code> is set to reference the current
+                    resource, and <code>resource.boots</code> is initialized to an empty array. The
+                    default discovery process inserts all layers that provide a <code>boot</code>
+                    property into <code>boots</code> so that the transform writeBdLoad may write
+                    these bootstrap layers. The default discovery process is able to find the loader
+                    resource as a consequence of this transform publishing it in the BCS property
+                        <code>loader</code>.</para>
+                <para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/readBdLoad.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/readBdLoad.js</link></para>
+            </sect3>
+        <sect3><title>writeBdLoad (asynchronous)</title><para>Writes the backdraft loader (bdLoad), its configuration, and optionally, one or more
+                    bootstraps. A bootstrap is the loader and its configuration plus a layer, all
+                    written to a single file. A bootstrap is designated by providing the property
+                        <code>boot</code> (a string) that designates a destination filename that
+                    within a layer specification. See xxx.</para>
+                <para>The configuration is computed by combining three components:<itemizedlist>
+                        <listitem>
+                            <para>the BCS property <code>loaderConfig</code></para>
+                        </listitem>
+                        <listitem>
+                            <para>the package configuration implied by the BCS property
+                                    <code>packages</code></para>
+                        </listitem>
+                        <listitem>
+                            <para>the has.js implementation given by the BCS property
+                                    <code>has</code>. If <code>has</code> is falsy, then a naive
+                                implementation intended for use only by the loader is included (see
+                                    <link
+                                    xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/has/naiveHas.js"
+                                    >https://github.com/altoviso/bdBuild/blob/master/lib/has/naiveHas.js</link>);
+                                if has is <code>"*bdBuild"</code> then a canonical <code>has</code>
+                                implementation is included (see <link
+                                    xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/has/bdBuildHas.js"
+                                    >https://github.com/altoviso/bdBuild/blob/master/lib/has/bdBuildHas.js</link>);
+                                otherwise, the resource given by the <code>has</code> property a
+                                resource is included.</para>
+                        </listitem>
+                </itemizedlist></para><para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/writeBdLoad.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/writeBdLoad.js</link></para></sect3>
+        <sect3><title>compactCss (synchronous)</title><para>Inspects the BCS property <code>compactCssSet[resource.src]</code>. If the value of that
+                    property is a string, then memorizes that string as the destination of a
+                    compacted version of the current resource; otherwise, memorizes the destination
+                    provided by the discovery process.</para>
+            <para>Transforms the <code>resource.text</code> by removing comments and white space.
+                    Further, resolves all CSS import statements (recursively) and inserts the
+                    also-transformed referenced resource text. This results in a single string that
+                    contains the compressed contents of the entire tree of CSS files implied by the
+                    import statements contained in the resource.</para>
+            <para>Maps all image URLs encountered during the tree traversal described above to
+                minimized names; replaces all image URLs within the transformed text with the
+                minimized names.; memorizes the map from original URL to minimized name. See
+                writeCss.</para><para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/compactCss.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/compactCss.js</link></para></sect3>
+        <sect3><title>writeCss (asynchronous)</title><para>Writes the transformed text computed by the compactCss transform to the memorized destination.
+                Copies all referenced images as given by the map of memorized image URLs to
+                minimized name to the same directory as given by the resource destination. </para><para>Current implementation: <link
+                        xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/transforms/writeCss.js"
+                        >https://github.com/altoviso/bdBuild/blob/master/lib/transforms/writeCss.js</link></para></sect3>
+        </sect2>
+   <sect2 xml:id="transformJobs"><title>Transform Jobs</title>
+   <para>We now have everything we need to actually do some work. Recall the basic algorithm
+            implemented by bdBuild:<orderedlist>
+                <listitem>
+                    <para>Discover some resources.</para>
+                </listitem>
+                <listitem>
+                    <para>For each discovered resource, look up and apply the resource-dependent
+                        ordered set of transforms.</para>
+                </listitem>
+            </orderedlist>The <code>transformJobs</code> BCS property gives a vector of pairs of
+            [predicate, vector of transforms]. When a resource is started, bdBuild applies the
+            resource to each predicate in the transformJobs vector; the vector of transforms
+            associated with the first predicate that returns true is selected for the given
+            resource. By default, bdBuild provides the transform jobs listed below.</para>
+       <sect3><title>bdLoad Job</title>
+           <para><emphasis role="bold">Applied to</emphasis>: any resource with a source filename
+                that matches /.*\/bdLoad\/lib\/require\.js$/</para>
+           <para><emphasis role="bold">Transforms</emphasis>: readBdLoad, jsTokenize, jsParse, has,
+                writeBdLoad</para>
+       </sect3>
+       <sect3><title>AMD Modules</title>
+           <para><emphasis role="bold">Applied to</emphasis>: any resource discovered while
+                executing discovery on a package configuration this is determined to be an AMD
+                module.</para>
+           <para><emphasis role="bold">Transforms</emphasis>: read, dojoPragmas, jsTokenize,
+                jsParse, has, amd, writeAmd</para>
+       </sect3>
+       <sect3><title>Normal, Non-i18n Javascript Code Modules</title>
+           <para><emphasis role="bold">Applied to:</emphasis> any resource that has file type .js,
+                    does not have file type .bcs.js, is not an AMD module, does not have /nls/ in
+                    its filename.</para>
+           <para><emphasis role="bold">Transforms</emphasis>: read, dojoPragmas, jsTokenize,
+                jsParse, has, write</para>
+       </sect3>
+       <sect3><title>CSS Files Designated for Compaction</title>
+           <para><emphasis role="bold">Applied to</emphasis>: any resource named in the BCS
+                compactCssSet property.</para>
+           <para><emphasis role="bold">Transforms</emphasis>: read, compactCss, writeCss</para>
+       </sect3>
+       <sect3><title>Catch All</title>
+           <para><emphasis role="bold">Applied to</emphasis>: any resource that is not a member of
+                any previous transform job.</para>
+           <para><emphasis role="bold">Transforms</emphasis>: read, write</para>
+       </sect3>  </sect2>
+   </sect1>
+    <sect1 xml:id="bcs"><title>Build Control Scripts</title><para>Although the examples given so far show a single BCS, bdBuild will accept multiple BCSs on the
+            command line. If more than one BCS is provided, then each script is processed left to
+            right, with the properties found in later processed scripts having precedence over
+            properties in earlier processed scripts. </para>
+        <para>Most properties are mixed from later scripts into earlier scripts on a property by
+            property bases. However, a few properties are mixed differently:<itemizedlist>
+                <listitem>
+                    <para>The <code>packages</code> and <code>packagePaths</code> properties are
+                        deep mixed on a per-package-property basis. For example, if a later BCS
+                        simply adds a <code>trees</code> property to a package configuration, this
+                        will not overwrite any other properties for that particular package.</para>
+                </listitem>
+                <listitem>
+                    <para>The <code>staticHasFlags</code> property is mixed on a per-flag basis.
+                        Specifying a flag value of <code>-1</code> indicates the flag should be
+                        removed from the <code>staticHasFlags</code> set.</para>
+                </listitem>
+            </itemizedlist>To drive all of this home, consider the command line...</para>
+        <para><screen>~/dev/bdBuild/test/tutorial/discovery> node ../../../lib/main.js -b ex1.bcs.js -b ex2.bcs.js --base-path sample-project</screen></para>
+        <para>The build control properties ultimately used by bdBuild will be all those found in
+                <filename>ex1.bcs.js</filename> after mixing in those found in
+                <filename>ex2.bcs.js</filename> as described above; the property
+                <filename>basePath</filename> will be <code>"sample-project"</code> whether or not
+                <filename>ex1</filename> and/or <filename>ex2</filename> provide a value for this
+            property.</para>
+        <para>Throughout this tutorial, we've mentioned that bdBuild provides several default BCS
+            properties, for example <filename>transforms</filename> and
+                <filename>transformJobs</filename>. Many of these are contained in the BCS script
+            found at <filename>bdBuild/lib/defaultBuildControl.js</filename>:, and this BCS is
+            automatically processed before any BCSs are processed as per command line
+            arguments.</para>
+        <para>Recall I mentioned that BCSs and loader configuration objects have much in common.
+            Recognizing this, bdBuild allows you to specify a loader configuration for use as a BCS.
+            Generally, loader configurations have two forms: applying the loader function
+                <filename>require</filename> to a configuration object or setting the global
+            variable <filename>require</filename> to the value of a configuration object before
+            bootstrapping the loader. Here are examples of each
+            form:<programlisting>// applying require to a configuration object...
+require({
+ paths:{
+    "i18n":"../../../dojotoolkit/dojo/lib/plugins/i18n",
+    "text":"../../../dojotoolkit/dojo/lib/plugins/text"
+});
+
+// setting the global variable require...
+var require= {
+  paths:{
+    "i18n":"../../../dojotoolkit/dojo/lib/plugins/i18n",
+    "text":"../../../dojotoolkit/dojo/lib/plugins/text"
+  }
+};</programlisting>Both
+            of these forms are very different than a plain old Javascript object as we've seen so
+            far. bdBuild will process the first form by specifying the <code>--require</code>
+            command line option and process the second form by specifying the
+                <code>--loader-config</code> command line option.</para>
+        <para>Clearly, loader configuration and build control are quite inter-dependent. Ideally,
+            all configuration information would be maintained in a single script. The problem with
+            this idea is that you will often want a slightly different configuration for development
+            compared to an optimized release. bdBuild provides for this by allowing a single BCS to
+            include two sets of properties, with the second, more significant set residing at the
+            property <code>build</code>. Consider the following BCS:</para>
+        <para>
+            <programlisting>var require= {
+  paths:{
+    "i18n":"../../../dojotoolkit/dojo/lib/plugins/i18n",
+    "text":"../../../dojotoolkit/dojo/lib/plugins/text"
+  },
+
+  packages:[{
+    name:"bd",
+    location:"../.."
+  },{
+    name:"dojo",
+    location:"../../../dojotoolkit/dojo",
+    lib:".",
+    main:"lib/main-browser"
+  }],
+
+  deps:["main"],
+
+  build:{
+    packages:[{
+      // since dojo uses the "text!" and "i18n!" plugin, and these are not really in the default package tree
+      // we must tell bdBuild to discover them by explicitly asking for them which will cause paths
+      // to be inspected
+      name:"*",
+      modules:{
+        i18n:1,
+        text:1
+      }
+    }]
+  }
+};</programlisting>The
+            BCS above is equivalent to providing two BCSs, one without the <code>build</code>
+            property, followed by one containing only the properties contained by the
+                <code>build</code> property. Note also that bdLoad will process such a script
+            properly and simply ignore the build property.</para>
+        <para>Lastly, if no BCS is provided through a command line argument, bdBuild will attempt to
+            read the file <filename>config.js</filename> in the current working directory as if the
+                <code>--loader-config</code> command line switch has been specified. bdBuild informs
+            the user by writing a message to the console when this default action is invoked.</para></sect1>
+    <sect1 xml:id="extending">
+        <title>Writing Custom Discovery and Transform Processes</title>
+        <para>TODOC</para>
+        <sect2>
+            <title>Writing a Custom Discovery Process</title>
+            <para>TODOC</para>
+        </sect2>
+        <sect2>
+            <title>Writing a Custom Transform</title>
+            <para>TODOC</para>
+        </sect2>
+        <sect2>
+            <title>Design and Implementation</title>
+            <para>Although highly capable, the bdBuild program design and implementation is also
+                quite simple. The main program control machinery is implemented in
+                    <filename>bdBuild/lib/main.js</filename>. The code contained loads the AMD
+                loader (bdLoad) which loads the remainder of the program. Once loaded, control is
+                transferred to the module <filename>bdLoad/lib/argv</filename> which processes the
+                command line, and then to <filename>bdload/lib/buildControl</filename> which
+                computes the build control object that controls how bdBuild discovers and transforms
+                resources.</para>
+            <para><filename>bdLoad/lib/buildControl</filename> is tedious but straightforward module
+                that mixes build control scripts, resolves all relative paths to absolute paths, and
+                fills in missing BCS properties with defaults. When bdBuild isn't doing what you
+                expect, the cause usually lies in an improperly specified property somewhere in one
+                or another build control scripts. One of the best ways to diagnose this problem is
+                to run the command line argument <code>--unit-test dumpbc</code> which dumps the
+                fully computed build control object. You will see lots of internal properties in
+                this object, but they are all well-named and their semantics obvious.</para>
+            <para>Once the build control object is computed, all of the transform and plugin modules
+                are loaded by the AMD loader and then the discovery process(es) are started. As each
+                resource is discovered, the discovery process creates a resource object and
+                publishes that object to the function <code>start</code> contained in
+                    <filename>bdLoad/lib/main</filename>. This function ensures that no two
+                resources are attempting to write to the same destination, and then enters the
+                resource in the engine that moves resources through the ordered set of gates. The
+                functions <code>advance</code> and <code>passGate</code> synchronize and move
+                resources through their prescribed set of transforms. When all resources have been
+                moved though all gates, bdBuild prints a message and terminates. If an error occurs
+                along the way, bdBuild allows the process to complete through the current
+                synchronized gate and then terminates.</para>
+        </sect2>
+    </sect1>
+    <sect1><title>Build Control Script Property Reference</title><para>TODOC</para></sect1>
+ 
+    <sect1><title>Command Line Reference</title><para>TODOC</para></sect1>
+    <sect1 xml:id="midMapping"><title>AMD Module Identifier to Filename Mapping Algorithm</title><para>The mapping algorithm used to map AMD module identifiers to filenames in bdBuild is very
+            nearly identical to the algorithm used to map AMD module identifiers to URLs in bdLoad.
+            The only real difference is what is used for the loader configuration variable baseUrl:<itemizedlist>
+                <listitem>
+                    <para>when resolving a source location, basePath is used.</para>
+                </listitem>
+                <listitem>
+                    <para>when resolving a destination location, destPackageBasePath is used.</para>
+                </listitem>
+            </itemizedlist></para>
+    <para>Here is the algorithm (the variable <code>base</code> is used for either basePath or
+            destPackageBasePath, depending upon the application):</para>
+        <para>
+            <orderedlist xml:id="urlCompute">
+                <title>Filename Computation for AMD Module Identifiers</title>
+                <listitem>
+                    <para>The first segment of the module identifier is assumed to be the package
+                        name and the remaining segments (if any) the module within that package. The
+                        package name is mapped by the <code>packageMap</code> configuration variable
+                        for the reference package; if mapped successfully, then the mapped name
+                        indicates the target package. If no mapping occurs, and the package name is
+                        known to the loader, that name indicates the target package; otherwise, the
+                        assumption was wrong and the module identifier is not a member of any
+                        package, but rather a member of the "default" package (designated as the set
+                        of modules that reside in the tree rooted at basePath), and the default
+                        package is the target package. </para>
+                    <para>If the target package was <emphasis role="bold">not</emphasis> the default
+                        package and the module name was composed of a single segment (that is, just
+                        the package name), then the target module is set to the <code>main</code>
+                        configuration variable given by the target package.</para>
+                </listitem>
+                <listitem>
+                    <para>The computed filename is set to the <code>location</code> configuration
+                        property of the target package concatenated with the <code>lib</code>
+                        configuration variable of the target package concatenated with the target
+                        module; concatenation inserts a "/" at each location.</para>
+                </listitem>
+                <listitem xml:id="urlTransform-paths">
+                    <para>The <code>pathTransforms</code> mapping is applied to the computed
+                        filename.</para>
+                </listitem>
+                <listitem xml:id="urlTransform-baseUrl">
+                    <para>If the filename computed so far is not absolute, then the value of the
+                            <code>base</code> is prepended to the computed filename.</para>
+                </listitem>
+                <listitem>
+                    <para>If the filename computed so far does not include a file type, then suffix
+                        ".js" is appended to the computed filename.</para>
                 </listitem>
             </orderedlist>
         </para>
-        <para>There are several kinds of transforms:<orderedlist>
-                <listitem>
-                    <para>Applying pragmas: typically pragmas cause some code to be
-                        included/generated and/or excluded. The excluded code together with the
-                        pragmas themselves can be discarded.</para>
-                </listitem>
-                <listitem>
-                    <para>Applying Javascript source code transforms: for example, if Javascript
-                        source code uses has.js feature detection and certain features are known to
-                        always or never exist, then the code bracketed by the has test can be either
-                        included or eliminated and the has test itself discarded.</para>
-                </listitem>
-                <listitem>
-                    <para>Generalized transforms: for example, applying a regular expression
-                        replacement to a particular file.</para>
-                </listitem>
-                <listitem>
-                    <para>Minimizing: given the semantics of a resource, certain static analysis and
-                        transforms can be applied. For example, removing comments for Javascript
-                        source code.</para>
-                </listitem>
-                <listitem>
-                    <para>Bundling: again, given the semantics of a resource, it is possible to
-                        execute static analysis and determine all dependencies of a particular
-                        resource and then bundle all those dependencies into a single resource.
-                        Examples are directly including CSS imports and bundling and AMD module
-                        dependency trees.</para>
-                </listitem>
-            </orderedlist>There are many possibilities with each kind of transformation and I'll
-            discuss several in detail. </para>
-        <para>The overall design of bdBuild is quite simple. It reads a bunch of resources, applies
-            transforms to those resources, and writes the results. The set of source resources.,
-            transformations to apply, and write destinations are all controlled by a "build control
-            script"--a Javascript object that specifies all the tasks requested of bdBuild. So, in
-            order to understand and use bdBuild, we must understand how to construct a build control
-            script that.</para>
-        <para>TODO</para>
     </sect1>
-    <sect1>
-        <title>Specifying Source and Destination Resources</title>
-        <para>As described above, bdBuild reads and writes a set of resources from one location to
-            another, possibly applying a transform between reading and writing. The most-general
-            method for specifying a set of resources is to provide file and/or directory source and
-            destination names.. bdBuild build control scripts provide three properties for such
-            general specifications:<variablelist>
-                <varlistentry>
-                    <term>files</term>
-                    <listitem>
-                        <para>an array of <code>[source-filename, dest-filename]</code> that give
-                            source and destination filenames</para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>dirs</term>
-                    <listitem>
-                        <para>an array of <code>[source-directory-name, dest-directory-name,
-                                    exclude-pattern<subscript>0</subscript>, . . . ,
-                                    exclude-pattern<subscript>n</subscript>]</code> that give source
-                            and destination directories. The directories are shallow-copied (that
-                            is, the directory tree is not recursively copied). The exclude patterns
-                            are optional, and if given provide a list of patterns specifying files
-                            that should <emphasis>not</emphasis> be copied. Exclude patterns may be
-                            either regular expressions or strings.. When a string is provided,
-                                "<code>?</code>" matches any single character, "<code>*</code>"
-                            matches any number of any character, and the remaining characters must
-                            match precisely (this kind of pattern is termed a "glob"
-                            pattern).</para>
-                        
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>trees</term>
-                    <listitem>
-                        <para>the same as dirs except that a deep copy is performed.</para>
-                    </listitem>
-                </varlistentry>
-            </variablelist></para>
-        <para>Names may be either relative or absolute filenames.. Source names names are relative
-            to the build control script property <code>basePath</code>., and destination names are
-            relative to the build control script propety destBasePath. Frequently, baseBase is the
-            only absolute path provided in the build control script and all other paths are relative
-            to it. There are many ways to specify basePath:<orderedlist>
-                <listitem>
-                    <para>Via a the command line argument -base-path (see xxx).</para>
-                </listitem>
-                <listitem>
-                    <para>Via the build control script property build.basePath (see xxx)</para>
-                </listitem>
-                <listitem>
-                    <para>Via the build control script property basePath.</para>
-                </listitem>
-                <listitem>
-                    <para>Via the directory in which the build control script resides.</para>
-                </listitem>
-            </orderedlist>Let's pause a moment and describe the business about build.basePath
-            compared to basePath. A build control script can specifiy any property at the root level
-            or as a member of the build property; any property found off the build property takes
-            precedence. As we move deeper into our exploration of build control scripts, we'll see
-            that several properties have identical semantics to those properties in bdLoad
-            configuration objects. This isn't surprising since a bdLoad configuration object
-            instructions the loader which resources to load in order to execute an application just
-            as a build control script instructs bdBuild which resources comprise an application so
-            those resources can be optimized. The idea of bdBuild is to allow a single configuration
-            object to be maintained for both development loading and building. The build property in
-            an otherwise "normal" loader configuration object provides a place to stuff build
-            control script properties that are either not applicable to the loader or when you want
-            to override dev-time loader properties. I'll talk more about this when we see some real
-            examples in xxx.</para>
-        <para>So, with all these choices for specifying basePath, which is best? Usually, the best
-            is the easiest: don't specify it at all and let bdBuild figure it out from the directory
-            that hold the build control script. It's highly likely that you'll have your app under
-            version control, and you'll have an established standard for checking out your project
-            and any dependent projects from one or more repositories. In order words, you should be
-            able to go to some random location in some file hierarchy and checkout your project and
-            its dependents, and have all of the resources maintain the same relative position to
-            each other. If that's true, then specifying the source and destination for all of your
-            application's resources relative to one of those resources--the build control script--is
-            the way to go.</para>
-        <para>destBasePath is similarly specified:<orderedlist>
-                <listitem>
-                    <para>Via the command line argument -dest-base-path.</para>
-                </listitem>
-                <listitem>
-                    <para>Vis the build control script properties build.destBasePath</para>
-                </listitem>
-                <listitem>
-                    <para>Via the build control script property destBasePath</para>
-                </listitem>
-                <listitem>
-                    <para>By concatentating basePath with the value of the BC property
-                        destBasePathSuffix. If not provided directly, destBasePathSuffix defaults to
-                        "-build".</para>
-                </listitem>
-            </orderedlist></para>
-        <para>Again, the easiest thing to do is do nothing and let bdBuild choose the
-            default.</para>
-        <para>We have more than enough information to write our first build control script. Here it
-            is:
-<programlisting>
-{
-  files:[
-    ["./dir-to-optionally-copy/resource-to-optionally-copy-1.js", "./build2/dir-to-optionally-copy/resource-to-optionally-copy-1.js"]
-  ],
-
-  dirs:[
-    ["./js", "./build2/js"]
-  ],
-  
-  trees:[
-    ["./css", "./build2/css"]
-  ]
-}</programlisting>Given
-            either <code>baseDir</code> or <code>baseTree</code>, relative sources names found in
-                <code>files</code>, <code>dirs</code>, and/or <code>trees</code> are relative to the
-            absolute source pathname given by <code>baseDir</code> or <code>baseTree</code>;
-            similarly, relative destination names are relative to the absolute destination pathname
-            given by <code>baseDir</code> or <code>baseTree</code>. Lastly, in addition to providing
-            the base for relative names, specifying <code>baseTree</code> or <code>baseDir</code>
-            implies the named pairs are inserted into the <code>trees</code> or <code>dirs</code>
-            vectors respectively. Let's take a look at an example build control script that contains
-            some these
-            elements:<programlisting>{
-  baseDir:"/home/rcgill/dev/backdraft/demo/helloWorld",
-  
-  files:[
-    ["../../../bdLoad/lib/require.js", "./require.js"]
-  ],
-
-  trees:[
-    ["./js", "./js", "*/js/test/*],
-    ["./css", "./css"]
-  ]
-}</programlisting></para>
-        <para>This build control script has the following semantics:<orderedlist>
-                <listitem>
-                    <para>baseDir is "/home/rcgill/dev/backdraft/demo/helloWorld"; all relatives
-                        source names found in the <code>files</code>, <code>dirs</code>, and/or
-                            <code>trees</code> properties (and others, as we'll soon see) are
-                        relative to this path.</para>
-                </listitem>
-                <listitem>
-                    <para>destBaseDir is "/home/rcgill/dev/backdraft/demo/helloWorld-demo";
-                        analogously to above, all relative destination names are relative to this
-                        path.</para>
-                </listitem>
-                <listitem>
-                    <para>Since destBaseDir implies an entry into dirs, the contents of the
-                        directory /home/rcgill/dev/backdraft/demo/helloWorld will be copied to
-                        /home/rcgill/dev/backdraft/demo/helloWorld-build. .</para>
-                </listitem>
-                <listitem>
-                    <para>The file
-                        /home/rcgill/dev/backdraft/demo/helloWorld/../../../bdLoad/lib/require.js
-                        will be copied to
-                        /fome/rcgill/dev/backdraft/demo/helloWorld-build/require.js</para>
-                </listitem>
-                <listitem>
-                    <para>The contents of the file system tree rooted at
-                        /usr/home/rcgill/dev/backdraft/demo/helloWorld/js with the exception of any
-                        filenames tha match the patter "*/js/test/*" will be copied to the tree
-                        rooted at /home/rcgill/dev/backdraft/demo/helloWorld-build/js.</para>
-                </listitem>
-                <listitem>
-                    <para>The contents of the file system tree rooted at
-                        /usr/home/rcgill/dev/backdraft/demo/helloWorld/css will be copied to the
-                        tree rooted at /home/rcgill/dev/backdraft/demo/helloWorld-build/css.</para>
-                </listitem>
-            </orderedlist></para>
-        <para>bdBuild is a node.js porgram. I'll describe all of the command line options in xxx,
-            but for now all we need to know is that the option "-b" is used to specify a build
-            control script. Assuming the build control script given above is stored as xxx, you can
-            execute the build by issuing the following command:</para>
-        <para><computeroutput>> node &lt;path-to-bdBuild>/lib/main.js -b xxx</computeroutput></para>
-        <para>On my machine, I install all packages at ~/dev, to my command line looks
-        like</para>
-        <para><computeroutput>> node ~/dev/bdBuild/lib/main.js -b xxx</computeroutput></para>
-        <para>provides for three types of sourceand their destination is specified by giving a set
-            of file names, directory names, </para>
-    </sect1>
-    <sect1>
-        <title>Design and Implementation</title>
-        <para>bdBuild is designed to be highly configurable. The core program begins with routines
-            to process the command line and the build control script(s); this results in a single
-            build control script that instructs bdBuild on the set of resources to be read,
-            transformed, and written. The remainder of the program consists of a simple engine that
-            reads each resource as prescribed and then delegates transformation and writing. The
-            transformation and writing processes are controlled by the build control script through
-            the transformMap and transformJobMap properties.</para>
-        <para>transformJobMap instructs bdBuild how to process resources. It consist of a array of
-            pairs of predicate functions and arrays of transform names. The predicate functions
-            accept a resource filename (complete with path) and return a boolean; the transform
-            names are defined by transformMap as we'll see in a moment. As each resource is
-            discovered consequent to the packages, trees, dirs, or files build control properties,
-            its filename (including the path) is applied to each predicate in the transformJobMap
-            array. The first predicate that returns true prescibes the set of transforms to apply to
-            the particular resource.</para>
-        <para>transformMap descibes transforms. It is a Javascript object that maps a transform name
-            to an AMD module and bdBuild phase. As resources are read, transformed, and written,
-            they pass through the following phases:<variablelist>
-                <varlistentry>
-                    <term>read</term>
-                    <listitem>
-                        <para>todo</para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>text</term>
-                    <listitem>
-                        <para>todo</para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>tokenize</term>
-                    <listitem>
-                        <para>todo</para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>tokens</term>
-                    <listitem>
-                        <para>todo</para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>parse</term>
-                    <listitem>
-                        <para>todo</para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>ast</term>
-                    <listitem>
-                        <para>todo</para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>optimize</term>
-                    <listitem>
-                        <para>todo</para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>write</term>
-                    <listitem>
-                        <para>todo</para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>cleanup</term>
-                    <listitem>
-                        <para>todo</para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>report</term>
-                    <listitem>
-                        <para>todo</para>
-                    </listitem>
-                </varlistentry>
-            </variablelist>The AMD module must have the value of a single function:</para>
-        <para>TODO define function(resource, buildControl)</para>
-        <para>Let's look at an
-            example:<programlisting>
-transformMap:{
-  dojoPragmaProc:["bdBuild/dojoPragmaProc", "text"]
-},
-
-transformJobMap:[
-  [
-    function(filename) {
-      return /\.js$/.test(filename);
-    },
-    [dojoPragmaProc]
-  ]
-]
-</programlisting>.
-            . . defines a single transform named "dojoPragmaProc" that is applied during the text
-            phase, and then instructs bdBuild to apply that transform to any resource filename that
-            end in ".js". When a resource object is passed to the function defined by the AMD module
-            bdBuild/dojoPragmaProc, its text property will be initialized with the contents of the
-            file controlled by tate particular resource object. Presumeably, the function would then
-            modify the text property as instructed by the Dojo pragmas contained with the
-            text.</para>
-        <para>There are a couple of key points to note in the example. First, each transform
-            function may modify the resource object passed to it. So later transforms operate on the
-            output of earlier transforms. Since the second element in each pair in the
-            transformJobMap is a vector, transform application order is well defined. Second, if no
-            read or write transform is provided, bdBuild automatically provides transforms for these
-            functions that simply read the resounce from the source filename into the text property
-            of the resource object and then write the text property to the destination
-            filename.</para>
-        <para>All resource processing is defined completely by the transformMap and transformJobMap
-            properties in the build control script. Recall that bdBuild constructs the buildControl
-            script by mixing all build control scripts indicated by the command line into the
-            default build control script. The default build control script defines transformMap and
-            transformJobMap as follows:<programlisting>TODO</programlisting>This descibes the
-            default build processing of bdBuild. Nevertheless, users can override this default be
-            providing additional/different items to transformMap (transformMap may be modified on a
-            per item basis) and/or providing a different transformJobMap (transformJobMap must be
-            completely replaced).</para>
-        <para>a order of transform application is defined. provided to the transform function</para>
-        <para>the resource will have been read with the contents of the file stuffed into the text
-            property is guarantshould.The AMD module bdBuild/dojoPragmaProc must return a function
-            andSee xxx details of the resource and amdResource classes.. The transformMap simply
-            associates a name with a function that may be applied to a resource at a particular
-            phase</para>
-        <para>resource is a Javascript object instantiated from the bdBuild-defined class resource.
-            If the resource is an AMD module then it will be derived from the bdBuild-defined class
-            amdResource, a subclass of resource.  defined by bdBuild that controls the processing of
-            a particular resource. All resource objects have the that takes two argumentss isbdBuild
-            provides defaults for these processes.The build control script also as given by the
-            build control script. How this deleg</para>
-        <para/>
-    </sect1>
+    <!--
     <sect1>
         <title>TO DOC</title>
         <para>bc.baseUrl</para>
@@ -454,4 +1279,5 @@ transformJobMap:[
         <para>&lt;check defaultBuildControl></para>
         <para>closure does not do common subexpr elimination</para>
         </sect1>
+        -->
 </article>

@@ -47,8 +47,8 @@ loader.require(["bdBuild/buildControl", "bdBuild/defaultBuildControl"], function
     bc.destBasePath=="",
     bc.destPackageBasePath=="./packages",
     bc.pagePath=="",
-    propsEqual(bc.transformMap, defaultBc.transformMap),
-    propsEqual(bc.transformJobsMap, defaultBc.transformJobsMap),
+    propsEqual(bc.transforms, defaultBc.transforms),
+    propsEqual(bc.transformJobs, defaultBc.transformJobs),
     propsEqual(bc.loaderConfig, defaultBc.loaderConfig),
     propsEqual(bc.staticHasFlags, defaultBc.staticHasFlags),
     propsEqual(bc.buildFlags, defaultBc.buildFlags)
@@ -91,8 +91,8 @@ loader.require(["bdBuild/buildControl", "bdBuild/defaultBuildControl"], function
     bc.destBasePath=="",
     bc.destPackageBasePath=="./packages",
     bc.pagePath=="",
-    propsEqual(bc.transformMap, defaultBc.transformMap),
-    propsEqual(bc.transformJobsMap, defaultBc.transformJobsMap),
+    propsEqual(bc.transforms, defaultBc.transforms),
+    propsEqual(bc.transformJobs, defaultBc.transformJobs),
     propsEqual(bc.loaderConfig, defaultBc.loaderConfig),
     propsEqual(bc.staticHasFlags, defaultBc.staticHasFlags),
     propsEqual(bc.buildFlags, defaultBc.buildFlags)

@@ -21,7 +21,7 @@ return {
     compactCss:["bdBuild/compactCss", "globalOptimize"]
   },
 
-  transformMap:[
+  transforms:[
     [
       // normal (i.e., not i18n bundle) Javascript source (maybe or maybe not AMD module)
       function(filename) {

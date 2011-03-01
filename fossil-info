@@ -3,8 +3,8 @@ repository:   /home/rcgill/fossils/bdBuild.fossil
 local-root:   /usr/home/rcgill/git-mirrors/bdBuild/work/
 project-code: 5e66e406d112e9adee6d4a0ad02a58dc760e1143
 server-code:  4a96ae05c57ab87127b9972cb6c97e51bce21dd8
-checkout:     b2646df87320ac66ce195ee7ad4fece1e3969bd4 2011-03-01 08:35:07 UTC
-parent:       b605b1d84a34abe5dc2e53516249d3ca8771ea13 2011-02-25 10:06:38 UTC
-child:        b151ba92609a94002e261f1e2da2d1cea80e2a50 2011-03-01 08:45:58 UTC
+checkout:     b151ba92609a94002e261f1e2da2d1cea80e2a50 2011-03-01 08:45:58 UTC
+parent:       b2646df87320ac66ce195ee7ad4fece1e3969bd4 2011-03-01 08:35:07 UTC
+child:        613acdcc2adb80875596e5112f176dfce31f7a9a 2011-03-01 08:56:25 UTC
 tags:         trunk
-comment:      updated tutorial; fixed d75dab573c (user: rcgill)
+comment:      fixes eec71209a4 (user: rcgill)

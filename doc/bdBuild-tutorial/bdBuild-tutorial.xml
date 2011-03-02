@@ -1209,9 +1209,608 @@ var require= {
                 synchronized gate and then terminates.</para>
         </sect2>
     </sect1>
-    <sect1><title>Build Control Script Property Reference</title><para>TODOC</para></sect1>
- 
-    <sect1><title>Command Line Reference</title><para>TODOC</para></sect1>
+   
+    <sect1 xml:id="bcsRef"><title>Build Control Script Property Reference</title><para>A "build control script" (BCS) instructs bdBuild how to discover resources and then what
+            transforms to apply to the various resources descovered. A BCS is embodied by a
+            Javascript resource that ultimately returns the value of a Javascript object (termed a
+            "build control object" or BCO) that contains various properties that control bdBuild.
+            This section descibes how to construct build control scripts and how to specify build
+            control objects within those scripts.</para>
+        <sect2 xml:id="bcsFormat"><title>Build Control Script Patterns</title>
+        <para>bdBuild allows for several code patterns to be used when implementing a BCS--that's
+            why it's called a build control <emphasis role="italic">script</emphasis>. The command
+            line flag used to specify the BCS instructs bdBuild which pattern to expect as
+            follows:</para>
+        <para>
+            <variablelist>
+                <varlistentry>
+                    <term>command line flag <code>--build</code></term>
+                    <listitem>
+                        <para>Generic Javascript code that has the value of an object. bdBuild will
+                            apply Javascript <code>eval</code> to the code contained in the resource
+                            after wrapping it with parenthesis to obtain the BCO. This allows for a
+                            couple of different patterns. Here is an example of just supplying an
+                            object:</para>
+                        <para>
+                            <programlisting>{
+  packages:{
+    name:"myPackage"
+    location:"packages/myPackage"
+  },
+  // et cetera...
+}</programlisting>
+                        </para>
+                        <para>And here is an example of supplying an object after some
+                            computation:</para>
+                        <para>
+                            <programlisting>(function() {
+  // any code can go here...
+
+  // assuming the code above initialized the variable result as required...
+  return result;
+})()</programlisting>
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>command line flag <code>--amd</code></term>
+                    <listitem>
+                        <para>an anonymous AMD module that has the value of the desired BCO. For
+                            example,</para>
+                        <para>
+                            <programlisting>// any code can go here...
+
+define([/* dependencies as required */], function(/* args as required */) {
+  // any code can go here...
+
+  // assuming the code above initialized the variable result as required ...
+  return result;
+});
+
+// any code can go here...</programlisting>
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>command line flag <code>--require</code></term>
+                    <listitem>
+                        <para>A script that defines the variable <code>require</code> as it would be
+                            set to initialize bdLoad or RequireJS. For example,</para>
+                        <para>
+                            <programlisting>// any code can go here...
+
+var require= {
+  packages:{
+    name:"myPackage"
+    location:"packages/myPackage"
+  },
+  // et cetera...
+}
+
+// any code can go here...
+// HOWEVER; the last value of require is used for the BCO</programlisting>
+                        </para>
+                    </listitem>
+                </varlistentry>
+                <varlistentry>
+                    <term>command line flag <code>--loader</code></term>
+                    <listitem>
+                        <para>A script that configures bdLoad or RequireJS. For example,.</para>
+                        <para>
+                            <programlisting>// any code can go here...
+
+require({
+  packages:{
+    name:"myPackage"
+    location:"packages/myPackage"
+  },
+  // et cetera...
+})
+
+// any code can go here...
+// HOWEVER; the last application of require must be to a configuration object
+// this is to be used for the BCO</programlisting>
+                        </para>
+                    </listitem>
+                </varlistentry>
+                
+            </variablelist>
+        </para></sect2>
+        <sect2 xml:id="bcoRef"><title>Job Control Properties</title>
+        <para>Build control objects contain two classes of properties:<itemizedlist>
+                    <listitem>
+                        <para>Job control properties: those properties that control the discovery
+                            and transform processes. These are the properties used by the typical
+                            user</para>
+                    </listitem>
+                    <listitem>
+                        <para>bdBuild configuration properties: those properties that configure
+                            which discovery process(es) are used, which transforms are available,
+                            and how transforms are applied to discovered resources. These properties
+                            are used when changing or extending the operation of bdBuild. bdBuild is
+                            delivered with defaults for all of these properties.</para>
+                    </listitem>
+                </itemizedlist>Note the, as for as bdBuild is concerned, there's no difference
+                between job control properties and bdBuild configuration properties. But most users
+                will never touch bdBuild configuration properties, so it's convenient to at least
+                describe them as two separate sets. Here are the job control properties that apply
+                to the discovery and transforms supplied with bdBuild:</para>
+            <para>
+                <variablelist>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>basePath</code></emphasis>, string,
+                            default = the path to the BCS that is being processed</term>
+                        <listitem>
+                            <para>A relative or absolute path that provides the base for many other
+                                source path properties when those path properties are given as
+                                relative paths:</para>
+                            <para>
+                                <itemizedlist>
+                                    <listitem>
+                                        <para>the base of any relative source names given in the
+                                                <code>files</code>, <code>dirs</code>, and
+                                                <code>trees</code> properties</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>the base of any relative path given in the
+                                                <code>location</code> property in a package
+                                            configuration when resolving source names</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>the <code>location</code> property for the default
+                                            package (if any)</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>the base of any relative source name given in the
+                                                <code>compactCssSet</code> property</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>the base of any relative source name given in the
+                                                <code>replacements</code> property</para>
+                                    </listitem>
+                                </itemizedlist>
+                            </para>
+                            <para>If <code>basePath</code> itself is given as relative, then it is
+                                automatically made absolute by prepending the path to the BCS that
+                                provided the <code>basePath</code> value. For example, if a BCS
+                                located at
+                                    <filename>/home/rcgill/dev/myProject/build/ex1.bcs.js</filename>
+                                provided a <code>basePath</code> value of <code>".."</code>, then
+                                the <code>basePath</code> would be computed to be
+                                    <filename>/home/rcgill/dev/myProject</filename>.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>destBasePath</code></emphasis>, string,
+                            default = <code>basePath + (basePathSuffix || "-build")</code>.</term>
+                        <listitem>
+                            <para>A relative or absolute path that provides the base for many other
+                                destination path properties when those path properties are given a
+                                relative paths:<itemizedlist>
+                                    <listitem>
+                                        <para>the base of any relative destination names given in
+                                            the <code>files</code>, <code>dirs</code>, and
+                                                <code>trees</code> properties</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>the base of any relative path given for the
+                                                <code>destPackageBasePath</code> property</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>the base of any relative destination given in the
+                                                <code>compactCssSet</code> property</para>
+                                    </listitem>
+                                </itemizedlist>If <code>destBasePath</code> itself is given as
+                                relative, then it is automatically made absolute by prepending the
+                                    <code>basePath</code>.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>destPackageBasePath</code></emphasis>,
+                            string, default= <code>destBasePath + "./packages"</code></term>
+                        <listitem>
+                            <para>The destination base for all packages where the destination
+                                    <code>location</code> property is relative.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>files</code></emphasis>, vector of
+                            fileItems, default = <code>[]</code></term>
+                        <listitem>
+                            <para>A vector of fileItems that give source file names that point to
+                                resources to discover and associated destinations for those
+                                discovered resources. A fileItem may be either a string or a pair of
+                                strings (a vector of two strings). A string implies a source file
+                                name relative to <code>basePath</code> with an associated
+                                destination relative to <code>destBasePath</code>. A pair implies a
+                                source file name and associated destination file name;
+                                    <code>basePath</code> and <code>destBasePath</code> are used for
+                                bases for relative source and distination names respectively.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>dirs</code></emphasis>, vector of
+                            dirItems, default = <code>[]</code></term>
+                        <listitem>
+                            <para>A vector of dirItems that give source directories in which to
+                                discover resources and associated destinations for any discovered
+                                resources. A dirItem may be either a string or a vector. A string
+                                implies a source directory name relative to <code>basePath</code>
+                                with an associated destination relative to
+                                <code>destBasePath</code>, and all resources that reside in the
+                                source directory are discovered. If a vector is given, then the
+                                first two items give the source directory name and associated
+                                distination directory name; <code>basePath</code> and
+                                    <code>destBasePath</code> are used for bases for relative source
+                                and distination names respectively. Any items after the first two
+                                items may either be strings or regular expressions, and these items
+                                give patterns to exclude from discovery. String patterns are
+                                understood to be globs where "*" matches zero or more of any
+                                character and "?" matches any single character. All resources in the
+                                source directory that do not match an exclusion pattern are
+                                discovered.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>trees</code></emphasis>, vector of
+                            dirItems, default = <code>[]</code></term>
+                        <listitem>
+                            <para>Same as dirs except that discovery traverses the tree rooted at
+                                each source directory.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>packages</code></emphasis>, vector of
+                            packageItems, default= <code>[]</code></term>
+                        <listitem>
+                            <para>A vector of file items that gives the set of CommonJS package
+                                items to discover. A package item may be either a string or a hash
+                                of package properties. If a string, then the string is understood to
+                                be the package name and implies the following hash of package
+                                properties:</para>
+                            <para>
+                                <programlisting>{
+  name: <emphasis role="italic">string-value-given</emphasis>,
+  location: "./" + <emphasis role="italic">string-value-given</emphasis>,
+  lib:"lib",
+  main:"main",
+  trees:["./" + <emphasis role="italic">string-value-given</emphasis>]
+}</programlisting>
+                            </para>
+                            <para>If a has, then the following properties may be specified:<variablelist>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"><code>name</code></emphasis>,
+                                            string, must be specified</term>
+                                        <listitem>
+                                            <para>The name of the package</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"
+                                            ><code>location</code></emphasis>, string, default =
+                                                <code>"./" + name</code></term>
+                                        <listitem>
+                                            <para>The root directory of the package
+                                                resources.</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"><code>lib</code></emphasis>,
+                                            string, default = <code>"lib"</code></term>
+                                        <listitem>
+                                            <para>The root directory of the package AMD
+                                                modules.</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"><code>main</code></emphasis>,
+                                            string, default = <code>"main"</code></term>
+                                        <listitem>
+                                            <para>The name of the AMD module for the package root
+                                                AMD module</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"
+                                                ><code>packageMap</code></emphasis>, map:string -->
+                                            string, default = <code>{}</code></term>
+                                        <listitem>
+                                            <para>A map of package names used by the package's AMD
+                                                modules to package names as configured by the build
+                                                control object.</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"><code>paths</code></emphasis>,
+                                            map:string --> string, default = <code>{}</code></term>
+                                        <listitem>
+                                            <para>A map from path prefixes to replacement path
+                                                prefixes.</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"
+                                                ><code>pathTransforms</code></emphasis>, vector of
+                                            path transform, default = []</term>
+                                        <listitem>
+                                            <para>TODOC</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"><code>files</code></emphasis>,
+                                            vector of fileItems, default = <code>[]</code></term>
+                                        <listitem>
+                                            <para>Same as files property in a build control object
+                                                except that relative names are relative to the
+                                                location property.</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"
+                                            ><abbrev>dirs</abbrev></emphasis>, vector of dirItems,
+                                            default = <code>[]</code></term>
+                                        <listitem>
+                                            <para>Same as dirs property in a build control object
+                                                except that relative names are relative to the
+                                                location property.</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"
+                                                ><abbrev>trees</abbrev></emphasis>, vector of
+                                            dirItems, default = <code>[location + "/" +
+                                            lib]</code></term>
+                                        <listitem>
+                                            <para>Same as trees property in a build control object
+                                                except that relative names are relative to the
+                                                location property. </para>
+                                        </listitem>
+                                    </varlistentry>
+                            </variablelist></para> <para>A package item specifies where to discover package resources in bdBuild just like the
+                                same object specifies how to locate package resources in an AMD loader (e.g.,
+                                bdLoad). The destination of all resources is computed relative to a destination
+                                location property which defaults to <code>destPackageBase + "/" +</code>
+                                <emphasis role="italic">package-name</emphasis>.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><abbrev>layers</abbrev></emphasis>, map:string
+                            --> layerItem, default = <code>{}</code></term>
+                        <listitem>
+                            <para>Each key names an AMD module that, when written to its
+                                destination, will include a bundle of modules (that is, zero or more
+                                additional modules). The bundle contents for a particular (key -->
+                                layerItem) includes...<itemizedlist>
+                                    <listitem>
+                                        <para>the module as given by the key, together with its
+                                            dependency tree, plus...</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>all modules given by the layerItem
+                                                <code>includes</code> property, and their dependency
+                                            trees, except that...</para>
+                                    </listitem>
+                                    <listitem>
+                                        <para>any module given by the layerItem
+                                                <code>excludes</code> property and their
+                                            dependencies are <emphasis role="italic">not</emphasis>
+                                            written</para>
+                                    </listitem>
+                                </itemizedlist></para>
+                            <para>layerItem is a hash with the following properties:<variablelist>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"
+                                            ><code>includes</code></emphasis>, vector of strings
+                                            (AMD module identifiers), default =
+                                            <code>[]</code></term>
+                                        <listitem>
+                                            <para>A list of additional modules which, together with
+                                                their dependencies, are included in the layer
+                                                subject to exclusion by
+                                                <code>excludes</code>.</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"
+                                            ><code>excludes</code></emphasis>, vector of strings
+                                            (AMD module identifiers), default =
+                                            <code>[]</code></term>
+                                        <listitem>
+                                            <para>A lost of modules which, together with their
+                                                dependencies, are unconditionally excluded from the
+                                                layer</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"><code>boot</code></emphasis>,
+                                            string, default = <code>undefined</code></term>
+                                        <listitem>
+                                            <para>A destination to write the bundle other than the
+                                                AMD module resource. When the bundle is written, it
+                                                is preceeded by the bdLoad loader and loader
+                                                configuration, and followed by the value of the
+                                                layerItem <code>bootText</code> property.</para>
+                                        </listitem>
+                                    </varlistentry>
+                                    <varlistentry>
+                                        <term><emphasis role="bold"
+                                            ><code>bootText</code></emphasis>, string, default =
+                                                <code>""</code></term>
+                                        <listitem>
+                                            <para>A string of Javascript code to write at the end of
+                                                a bootstrap layer. Typcially, this is some kind of
+                                                AMD <code>require</code> application.</para>
+                                        </listitem>
+                                    </varlistentry>
+                                </variablelist></para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold">loaderConfig</emphasis>, bdLoad configuration
+                            object, default = <code>{}</code></term>
+                        <listitem>
+                            <para>Gives the configuration to provide for the bdLoad
+                                bootstrap.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><abbrev>locales</abbrev></emphasis>, vector of
+                            strings (locale identifiers), default = <code>[]</code></term>
+                        <listitem>
+                            <para>Gives the set of locales that should be written when including
+                                i18n bundles in any layers.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><abbrev>has</abbrev></emphasis>, string, default
+                            = <code>undefined</code></term>
+                        <listitem>
+                            <para>Gives the has.js implementation that should be included with the
+                                bdLoad configuration:<itemizedlist>
+                                    <listitem>
+                                        <para><emphasis role="bold"
+                                                ><code>undefined</code></emphasis> implies a naive
+                                            has.js implementation that is generally only useful for
+                                            bdLoad; see <link
+                                                xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/has/naiveHas.js"
+                                                >https://github.com/altoviso/bdBuild/blob/master/lib/has/naiveHas.js</link></para>
+                                    </listitem>
+                                    <listitem>
+                                        <para><emphasis role="bold"><code>*bdBuild</code></emphasis>
+                                            implies a canonical has.js implmentation included with
+                                            the loader; see <link
+                                                xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/has/bdBuildHas.js"
+                                                >https://github.com/altoviso/bdBuild/blob/master/lib/has/bdBuildHas.js</link></para>
+                                    </listitem>
+                                    <listitem>
+                                        <para><emphasis role="bold">otherwise</emphasis>, gives a
+                                            resource source file name (relative names are relative
+                                            to <code>basePath</code>), that contains the has.js
+                                            implementation to include.</para>
+                                    </listitem>
+                                </itemizedlist></para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><abbrev>staticHasFlags</abbrev></emphasis>,
+                            map:string --> {-1, truthy, falsy}, default = see below</term>
+                        <listitem>
+                            <para>Gives a map from has.js feature names to build-time-known values:
+                                truthy indicates the feature exists, falsy indicates the feature
+                                does not exist, -1 indicates the feature is not known at build time.
+                                The -1 value facilitates mixing build control objects as described
+                                in the next section. The default <code>staticHasFlags</code> value
+                                is contained in <link
+                                    xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/defaultBuildControl.js"
+                                    >https://github.com/altoviso/bdBuild/blob/master/lib/defaultBuildControl.js</link>.</para>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>
+            </para>
+        </sect2>
+    <sect2><title>bdBuild Configuration Properties</title><para>bdBuild provides defaults for all of these properties in the resource
+                bdBuild/lib/defaultBuildControl.js. see <link
+                    xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/defaultBuildControl.js"
+                    >https://github.com/altoviso/bdBuild/blob/master/lib/defaultBuildControl.js</link>
+                for the current value in trunk.</para><para>
+                <variablelist>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>discoveryProcs</code></emphasis>, vector
+                            of string (AMD module identifiers)</term>
+                        <listitem>
+                            <para>Gives the list of descovery procedures to be executed.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>gates</code></emphasis>, vector of
+                            [boolean, string, message] triples (sychronized gate?, gate name, gate
+                            message)</term>
+                        <listitem>
+                            <para>Gives the list of gates and their properties that control movement
+                                through the transform jobs.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>transforms</code></emphasis>,
+                            map:transformId --> [string, string] pairs (AMD module identifier, gate
+                            name)</term>
+                        <listitem>
+                            <para>Gives the set of transforms and their associated gates that are
+                                available to <code>transformJobs</code>.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>transformJobs</code></emphasis>, vector of
+                            [predicate, vector of string (transformId)] pairs</term>
+                        <listitem>
+                            <para>Gives a predicate function to test resources against. The first
+                                predicate that returns true for a particular resource indicates the
+                                set of transforms to apply to that resource.</para>
+                        </listitem>
+                    </varlistentry>
+                    <varlistentry>
+                        <term><emphasis role="bold"><code>plugins</code></emphasis>,
+                            map:AMD-plugin-id --> string (AMD module identifier)</term>
+                        <listitem>
+                            <para>Gives the processor to apply to any discovered AMD plugin
+                                modules.</para>
+                        </listitem>
+                    </varlistentry>
+                </variablelist>
+            </para></sect2></sect1>
+    <sect1 xml:id="commandLineRef"><title>Command Line Reference</title><para>bdBuild is a node program located at bdBuild/lib/main.js. The command line may indicates zero
+            of more build control scripts and/or build control object properties. </para>
+        <para>bdBuild recognizes four different patterns for build control scripts, and each pattern
+            is associated with a specific command line flag as given in xxx. The command line will
+            accept any number of build control script arguments. If multiple build control scripts
+            are given, then bdBuild will mix the properties contained in all of the designated
+            scripts, left-to-right, with right-side BCS properties overwriting left-side BCS
+            properties as they are processed:<footnote><para>The default build control script located at bdBuild/lib/defaultBuildControl.js is always implied as the left-most, initial value for the build control script.</para></footnote><itemizedlist>
+                <listitem>
+                    <para>package items are mixed on a per-package-property basis. For example, if a
+                        left-side and a right-side BCS define the same package (that is, a package
+                        item with the same name), then only those properties explicitly included in
+                        the right-side BCS package item will overwrite properties in the left-side
+                        package item.</para>
+                </listitem>
+                <listitem>
+                    <para>staticHasFlags are mixed on a per-feature-name basis.</para>
+                </listitem>
+                <listitem>
+                    <para>all other propeties are mixed on a per property based. For example, if a
+                        left-side and a right-side BCS both define a <code>trees</code> property,
+                        then the left-side <code>s</code> property will be ignored and the
+                        right-side <code>trees</code> property used.</para>
+                </listitem>
+            </itemizedlist></para>
+        <para>If any command line flag other than <code>--build</code>, <code>--amd</code>,
+                <code>--require</code>, or <code>--loader</code> is provided, then that argument is
+            assumed to designate a build control object property value (a string). No check is made
+            to see that the value is rational since user-defined discovery procedures and transforms
+            may define build control property values not known to bdBuild. If any such properties
+            are provided on the command line, they can be visualized initializing a right-side build
+            control script "on the fly". For example, the command line...</para>
+        <para>
+            <screen>node ../bdLoad/lib/main.js --build myPackage --someProperty someValue</screen>
+        </para>
+        <para>...is equivalent to creating the build control script
+                <filename>myQuickie.bcs.js</filename> (in the same directory as the
+                <filename>myPackage</filename> BCS) as follows:</para>
+        <para>
+            <programlisting>{
+  someProperty:"someValue"
+}</programlisting>
+        </para>
+        <para>An then issuing the command...</para>
+        <para>
+            <screen>node ../bdLoad/lib/main.js --build myPackage --myQuickie</screen>
+        </para>
+        <para>If no build control script argument is provided to bdBuild, then bdBuild will attempt
+            to read the file "config.js" in the current directory as if it was specified with a
+                <code>--require</code> flag.</para></sect1>
+    <sect1><title>Recipes</title><para>This sections gives a number of build control script recipes that are both useful examples and
+            used in their own right. All of these scripts are available at xxx.</para></sect1>
+
     <sect1 xml:id="midMapping"><title>AMD Module Identifier to Filename Mapping Algorithm</title><para>The mapping algorithm used to map AMD module identifiers to filenames in bdBuild is very
             nearly identical to the algorithm used to map AMD module identifiers to URLs in bdLoad.
             The only real difference is what is used for the loader configuration variable baseUrl:<itemizedlist>

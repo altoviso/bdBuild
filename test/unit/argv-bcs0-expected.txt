@@ -1,9 +1,0 @@
-{
-  basePath:"/usr/home/rcgill/dev/bdBuild/test/unit/this/is/a/test",
-  buildControlScripts:[{basePath:"/usr/home/rcgill/dev/bdBuild/test/unit"}],
-  destBasePath:"/usr/home/rcgill/dev/bdBuild/test3",
-  destPackageBasePath:"/my documents",
-  pageBasePath:"/test2",
-  unitTest:"argv",
-  unitTestParam:["argv-bcs0-expected.txt"]
-}

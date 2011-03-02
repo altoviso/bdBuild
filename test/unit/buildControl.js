@@ -27,7 +27,6 @@ function eqByValue(a, b) {
   return JSON.stringify(a)==JSON.stringify(b);
 }
 
-
 var tests= [];
 
 define("args", [], {build:[{}]});

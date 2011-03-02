@@ -1,0 +1,8 @@
+{
+  buildControlScripts:[{basePath:"/usr/home/rcgill/dev/bdBuild/test/unit"}],
+  someOtherProperty:"v2",
+  someProperty:"v1",
+  unitTest:"argv",
+  unitTestParam:["argv-expected-02.txt"],
+  version:"1.0.0-beta"
+}

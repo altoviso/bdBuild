@@ -162,53 +162,58 @@
             and/or packages as specified by a BCS.. This section describes how to specify these
             resources in a BCS</para>
         <sect2 xml:id="files"><title>basePath, destBasePath, and Discovering Files</title>
-            <para>Let's start with a super-simple example: the following BCS discovers the file
+            <para>Let's start with a super-simple example. The BCS <code>files</code> property gives
+                a list of file names to discover. The following BCS discovers the file
                     <filename>myModule.js</filename>:</para>
             <para><programlisting>{
+  basePath:"sample-project",
   files:[
     "myModule.js"
   ]
-}</programlisting>Of course this
-                begs the question, "where should bdBuild look?". Before executing any discovery
-                process, bdBuild converts all file names and paths mentioned in the BCS to absolute
-                paths. Any source file name/path that is not given as an absolute path is taken to
-                be relative to the BCS property <code>basePath</code>. The same goes for destination
-                file names/paths and the BCS property <code>destBasePath</code>.
-                    <code>basePath</code> is computed as follows:<orderedlist>
+}</programlisting>Of
+                course, this begs the question, "where should bdBuild look for the file
+                    <filename>myModule.js</filename>?"</para>
+            <para>Before executing any discovery process, bdBuild converts all file names and paths
+                mentioned in the BCS to absolute paths. Throughout this tutorial, I'll use the term
+                "relative" loosely to mean any path that is not absolute. Notice that all of the
+                names in the example are relative; this is typical.</para>
+            <para>In order to convert a relative path to an absolute path a "base" path must be
+                designated, and the base path must be absolute. Given a base path and a relative
+                path, bdBuild computes an absolute path by concatenating the base path,
+                    <code>"./"</code>, and the relative path. Notice if the relative path actually
+                happens to include a <code>"./"</code> prefix, the computed value remains the
+                same.</para>
+            <para>For the files property, the property basePath is designated as the base for any
+                relative source names and the property destBasePath is designated as the base for
+                any relative destination names. <code>basePath</code> is computed as follows:<orderedlist>
                     <listitem>
-                        <para>By the command line argument <code>--base-path</code>,
-                            otherwise...</para>
-                    </listitem>
-                    <listitem>
-                        <para>By the <code>basePath</code> property explicitly set in the BCS,
-                            otherwise...</para>
+                        <para>By the <code>basePath</code> property explicitly set in the BCS; if
+                            this value is relative, then the path that contains the BCS is used as a
+                            prefix to make the path absolute. Otherwise...</para>
                     </listitem>
                     <listitem>
                         <para>By the path that contains the BCS.</para>
                     </listitem>
-                </orderedlist><code>destBasePath</code> is computed as...<orderedlist>
+                </orderedlist></para>
+            <para><code>destBasePath</code> is computed as...<orderedlist>
                     <listitem>
-                        <para>By the command line argument <code>--dest-base-path</code>,
-                            otherwise...</para>
-                    </listitem>
-                    <listitem>
-                        <para>By the <code>destBasePath</code> property explicitly set in the BCS,
-                            otherwise...</para>
+                        <para>By the <code>destBasePath</code> property explicitly set in the BCS;
+                            if this value is relative, then basePath is used for the base path when
+                            computing an absolute path. Otherwise...</para>
                     </listitem>
                     <listitem>
                         <para>By appending <code>"-build"</code> to the value of
                                 <code>basePath</code>.</para>
                     </listitem>
-                </orderedlist>The default discovery process associates a destination location with
-                each discovered resource. When an explicit destination location is not given, the
-                process converts the source filename to a destination filename by removing the
-                    <code>basePath</code> (if the filename begins with it) and adding the prefix
-                    <code>destBasePath</code>. So the BCS given above tries to discover the resource
-                    <filename>myModule.js</filename> at the location <emphasis role="italic">basePath</emphasis><filename>/myModule.js</filename>, and, if found, associates
-                the destination <emphasis role="italic">destBasepath</emphasis><filename>/myModule.js</filename> with the discovered
+                </orderedlist>So the BCS given above tries to discover the resource
+                    <filename>myModule.js</filename> at the location <emphasis role="italic"
+                    >basePath</emphasis><filename>/myModule.js</filename>, and, if found, associates
+                the destination <emphasis role="italic"
+                    >destBasepath</emphasis><filename>/myModule.js</filename> with the discovered
                 resource.</para>
         <para>An explicit destination can be indicated by providing a pair of
-            names:<programlisting>{
+                names:<programlisting>{
+  basePath:"sample-project",
   files: [
     ["myModule.js", "someDir/myModule.js"]
   ]
@@ -223,23 +228,23 @@
                     <filename>bdBuild/test/tutorial/discovery</filename> and execute the
                 command</para>
             <para>
-                <screen>~/dev/bdBuild/test/tutorial/discovery> node ../../../lib/main.js -b ex1.bcs.js --base-path sample-project</screen>
+                <screen>~/dev/bdBuild/test/tutorial/discovery> node ../../../lib/main.js -b ex1</screen>
             </para>
         <para>bdBuild is a <link xlink:href="http://nodejs.org">node.js</link> program and the
                 startup resource for bdBuild is <filename>bdBuild/lib/main.js</filename>, so node
                     <filename>../../../lib/main.js</filename> simply causes node to execute bdBuild
                 (assuming the current working directory is
                     <filename>bdBuild/test/tutorial/discovery</filename>). The command line argument
-                    <code>-b ex1.bcs.js</code> instructs bdBuild to execute the BCS
-                    <filename>ex1.bcs.js</filename>, and <code>--base-path</code> indicates the
-                    <code>basePath</code> value <code>"sample-project"</code>. Since
-                    <filename>sample-project</filename> is not an absolute path, it is taken to be
-                relative to the current working directory. If all goes well, the resource
-                    <filename>sample-project/myModule.js</filename> should be discovered and the
-                destination <filename>sample-project-build/myModules.js</filename> associated with
-                the discovered resource. As we'll see below, the default transformJobs will cause
-                the discovered resource to be copied to the destination location. You should see
-                bdBuild print the following output:</para>
+                    <code>-b ex1</code> instructs bdBuild to execute the BCS
+                    <filename>ex1.bcs.js</filename>. When a BCS is specified without a file type
+                with the <code>-b</code> command line option, a file type of
+                    <filename>.bcs.js</filename> is assumed. You could also explicitly specify the
+                filename completely by typing <code>-b ex1.bcs.js</code>. If all goes well, the
+                resource <filename>sample-project/myModule.js</filename> should be discovered and
+                the destination <filename>sample-project-build/myModules.js</filename> associated
+                with the discovered resource. As we'll see below, the default transformJobs will
+                cause the discovered resource to be copied to the destination location. You should
+                see bdBuild print the following output:</para>
             <para>
                 <screen>discovering resources...
 reading resources...
@@ -258,12 +263,14 @@ Total build time: 0.167 seconds</screen>
         <para>If you specify a resource that doesn't exist, bdBuild will report and terminate. The
                 BCS at <filename>ex3.bcs.js</filename> includes such a resource; here is the
                 output:</para>
-        <para><screen>bdBuild/test/tutorial/discovery]$ node ../../../lib/main.js -b ex3.bcs.js --base-path sample-project
+        <para><screen>bdBuild/test/tutorial/discovery]$ node ../../../lib/main.js -b ex3
 discovering resources...
 reading resources...
-ERROR: error while transforming resource: /usr/home/rcgill/dev/bdBuild/test/tutorial/discovery/sample-project/NOT-EXIST-myModule.js
+ERROR: error while transforming resource: /usr/home/rcgill/dev/bdBui
+ld/test/tutorial/discovery/sample-project/NOT-EXIST-myModule.js
 transform: 0
-Error: ENOENT, No such file or directory '/usr/home/rcgill/dev/bdBuild/test/tutorial/discovery/sample-project/NOT-EXIST-myModule.js'
+Error: ENOENT, No such file or directory '/usr/home/rcgill/dev/bdBui
+ld/test/tutorial/discovery/sample-project/NOT-EXIST-myModule.js'
 </screen></para>
         <para>The first error message gives the resource and transform that encountered a problem;
                 in this case, bdBuild encountered a problem with the resource
@@ -290,6 +297,7 @@ Error: ENOENT, No such file or directory '/usr/home/rcgill/dev/bdBuild/test/tuto
                 </footnote> or regular expressions. Consider the following example (you can find
                 this at <filename>ex4.bcs.js</filename>):</para>
             <para><programlisting>{
+  basePath:"sample-project",
   dirs:[
     [".", ".", "*.bak"]
   ],
@@ -1083,17 +1091,14 @@ packages:[{
                         removed from the <code>staticHasFlags</code> set.</para>
                 </listitem>
             </itemizedlist>To drive all of this home, consider the command line...</para>
-        <para><screen>~/dev/bdBuild/test/tutorial/discovery> node ../../../lib/main.js -b ex1.bcs.js -b ex2.bcs.js --base-path sample-project</screen></para>
+        <para><screen>~/dev/bdBuild/test/tutorial/discovery> node ../../../lib/main.js -b ex1 -b ex2</screen></para>
         <para>The build control properties ultimately used by bdBuild will be all those found in
                 <filename>ex1.bcs.js</filename> after mixing in those found in
-                <filename>ex2.bcs.js</filename> as described above; the property
-                <filename>basePath</filename> will be <code>"sample-project"</code> whether or not
-                <filename>ex1</filename> and/or <filename>ex2</filename> provide a value for this
-            property.</para>
+                <filename>ex2.bcs.js</filename> as described above.</para>
         <para>Throughout this tutorial, we've mentioned that bdBuild provides several default BCS
             properties, for example <filename>transforms</filename> and
-                <filename>transformJobs</filename>. Many of these are contained in the BCS script
-            found at <filename>bdBuild/lib/defaultBuildControl.js</filename>:, and this BCS is
+                <filename>transformJobs</filename>. These are contained in the BCS script found at
+                <filename>bdBuild/lib/defaultBuildControl.js</filename>:, and this BCS is
             automatically processed before any BCSs are processed as per command line
             arguments.</para>
         <para>Recall I mentioned that BCSs and loader configuration objects have much in common.
@@ -1117,9 +1122,12 @@ var require= {
   }
 };</programlisting>Both
             of these forms are very different than a plain old Javascript object as we've seen so
-            far. bdBuild will process the first form by specifying the <code>--require</code>
-            command line option and process the second form by specifying the
-                <code>--loader-config</code> command line option.</para>
+            far. bdBuild will process the first form by specifying the <code>--require</code>  or
+                <code>-r</code> command line option and process the second form by specifying the
+                <code>--loader</code> or <code>-l</code> command line option. </para>
+        <para>So far, we've been using the <code>-b</code> option in the examples, which expects the
+            value of the BCS to be an object. The verbose version of <code>-b</code> is
+                <code>--build</code>.</para>
         <para>Clearly, loader configuration and build control are quite inter-dependent. Ideally,
             all configuration information would be maintained in a single script. The problem with
             this idea is that you will often want a slightly different configuration for development
@@ -1164,57 +1172,15 @@ var require= {
             properly and simply ignore the build property.</para>
         <para>Lastly, if no BCS is provided through a command line argument, bdBuild will attempt to
             read the file <filename>config.js</filename> in the current working directory as if the
-                <code>--loader-config</code> command line switch has been specified. bdBuild informs
-            the user by writing a message to the console when this default action is invoked.</para></sect1>
-    <sect1 xml:id="extending">
-        <title>Writing Custom Discovery and Transform Processes</title>
-        <para>TODOC</para>
-        <sect2>
-            <title>Writing a Custom Discovery Process</title>
-            <para>TODOC</para>
-        </sect2>
-        <sect2>
-            <title>Writing a Custom Transform</title>
-            <para>TODOC</para>
-        </sect2>
-        <sect2>
-            <title>Design and Implementation</title>
-            <para>Although highly capable, the bdBuild program design and implementation is also
-                quite simple. The main program control machinery is implemented in
-                    <filename>bdBuild/lib/main.js</filename>. The code contained loads the AMD
-                loader (bdLoad) which loads the remainder of the program. Once loaded, control is
-                transferred to the module <filename>bdLoad/lib/argv</filename> which processes the
-                command line, and then to <filename>bdload/lib/buildControl</filename> which
-                computes the build control object that controls how bdBuild discovers and transforms
-                resources.</para>
-            <para><filename>bdLoad/lib/buildControl</filename> is tedious but straightforward module
-                that mixes build control scripts, resolves all relative paths to absolute paths, and
-                fills in missing BCS properties with defaults. When bdBuild isn't doing what you
-                expect, the cause usually lies in an improperly specified property somewhere in one
-                or another build control scripts. One of the best ways to diagnose this problem is
-                to run the command line argument <code>--unit-test dumpbc</code> which dumps the
-                fully computed build control object. You will see lots of internal properties in
-                this object, but they are all well-named and their semantics obvious.</para>
-            <para>Once the build control object is computed, all of the transform and plugin modules
-                are loaded by the AMD loader and then the discovery process(es) are started. As each
-                resource is discovered, the discovery process creates a resource object and
-                publishes that object to the function <code>start</code> contained in
-                    <filename>bdLoad/lib/main</filename>. This function ensures that no two
-                resources are attempting to write to the same destination, and then enters the
-                resource in the engine that moves resources through the ordered set of gates. The
-                functions <code>advance</code> and <code>passGate</code> synchronize and move
-                resources through their prescribed set of transforms. When all resources have been
-                moved though all gates, bdBuild prints a message and terminates. If an error occurs
-                along the way, bdBuild allows the process to complete through the current
-                synchronized gate and then terminates.</para>
-        </sect2>
-    </sect1>
+                <code>--require</code> command line switch has been specified. bdBuild informs the
+            user by writing a message to the console when this default action is invoked.</para></sect1>
+   
    
     <sect1 xml:id="bcsRef"><title>Build Control Script Property Reference</title><para>A "build control script" (BCS) instructs bdBuild how to discover resources and then what
-            transforms to apply to the various resources descovered. A BCS is embodied by a
+            transforms to apply to the various resources discovered. A BCS is embodied by a
             Javascript resource that ultimately returns the value of a Javascript object (termed a
             "build control object" or BCO) that contains various properties that control bdBuild.
-            This section descibes how to construct build control scripts and how to specify build
+            This section describes how to construct build control scripts and how to specify build
             control objects within those scripts.</para>
         <sect2 xml:id="bcsFormat"><title>Build Control Script Patterns</title>
         <para>bdBuild allows for several code patterns to be used when implementing a BCS--that's
@@ -1224,7 +1190,7 @@ var require= {
         <para>
             <variablelist>
                 <varlistentry>
-                    <term>command line flag <code>--build</code></term>
+                    <term>command line flag <code>--build</code> or <code>-b</code></term>
                     <listitem>
                         <para>Generic Javascript code that has the value of an object. bdBuild will
                             apply Javascript <code>eval</code> to the code contained in the resource
@@ -1253,26 +1219,7 @@ var require= {
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>command line flag <code>--amd</code></term>
-                    <listitem>
-                        <para>an anonymous AMD module that has the value of the desired BCO. For
-                            example,</para>
-                        <para>
-                            <programlisting>// any code can go here...
-
-define([/* dependencies as required */], function(/* args as required */) {
-  // any code can go here...
-
-  // assuming the code above initialized the variable result as required ...
-  return result;
-});
-
-// any code can go here...</programlisting>
-                        </para>
-                    </listitem>
-                </varlistentry>
-                <varlistentry>
-                    <term>command line flag <code>--require</code></term>
+                    <term>command line flag <code>--require</code> or <code>-r</code></term>
                     <listitem>
                         <para>A script that defines the variable <code>require</code> as it would be
                             set to initialize bdLoad or RequireJS. For example,</para>
@@ -1293,7 +1240,7 @@ var require= {
                     </listitem>
                 </varlistentry>
                 <varlistentry>
-                    <term>command line flag <code>--loader</code></term>
+                    <term>command line flag <code>--loader</code> or <code>-l</code></term>
                     <listitem>
                         <para>A script that configures bdLoad or RequireJS. For example,.</para>
                         <para>
@@ -1425,7 +1372,7 @@ require({
                                 destination relative to <code>destBasePath</code>. A pair implies a
                                 source file name and associated destination file name;
                                     <code>basePath</code> and <code>destBasePath</code> are used for
-                                bases for relative source and distination names respectively.</para>
+                                bases for relative source and destination names respectively.</para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
@@ -1440,9 +1387,9 @@ require({
                                 <code>destBasePath</code>, and all resources that reside in the
                                 source directory are discovered. If a vector is given, then the
                                 first two items give the source directory name and associated
-                                distination directory name; <code>basePath</code> and
+                                destination directory name; <code>basePath</code> and
                                     <code>destBasePath</code> are used for bases for relative source
-                                and distination names respectively. Any items after the first two
+                                and destination names respectively. Any items after the first two
                                 items may either be strings or regular expressions, and these items
                                 give patterns to exclude from discovery. String patterns are
                                 understood to be globs where "*" matches zero or more of any
@@ -1627,7 +1574,7 @@ require({
                                         <listitem>
                                             <para>A destination to write the bundle other than the
                                                 AMD module resource. When the bundle is written, it
-                                                is preceeded by the bdLoad loader and loader
+                                                is preceded by the bdLoad loader and loader
                                                 configuration, and followed by the value of the
                                                 layerItem <code>bootText</code> property.</para>
                                         </listitem>
@@ -1638,7 +1585,7 @@ require({
                                                 <code>""</code></term>
                                         <listitem>
                                             <para>A string of Javascript code to write at the end of
-                                                a bootstrap layer. Typcially, this is some kind of
+                                                a bootstrap layer. Typically, this is some kind of
                                                 AMD <code>require</code> application.</para>
                                         </listitem>
                                     </varlistentry>
@@ -1677,7 +1624,7 @@ require({
                                     </listitem>
                                     <listitem>
                                         <para><emphasis role="bold"><code>*bdBuild</code></emphasis>
-                                            implies a canonical has.js implmentation included with
+                                            implies a canonical has.js implementation included with
                                             the loader; see <link
                                                 xlink:href="https://github.com/altoviso/bdBuild/blob/master/lib/has/bdBuildHas.js"
                                                 >https://github.com/altoviso/bdBuild/blob/master/lib/has/bdBuildHas.js</link></para>
@@ -1718,12 +1665,12 @@ require({
                         <term><emphasis role="bold"><code>discoveryProcs</code></emphasis>, vector
                             of string (AMD module identifiers)</term>
                         <listitem>
-                            <para>Gives the list of descovery procedures to be executed.</para>
+                            <para>Gives the list of discovery procedures to be executed.</para>
                         </listitem>
                     </varlistentry>
                     <varlistentry>
                         <term><emphasis role="bold"><code>gates</code></emphasis>, vector of
-                            [boolean, string, message] triples (sychronized gate?, gate name, gate
+                            [boolean, string, message] triples (synchronized gate?, gate name, gate
                             message)</term>
                         <listitem>
                             <para>Gives the list of gates and their properties that control movement
@@ -1760,12 +1707,16 @@ require({
             </para></sect2></sect1>
     <sect1 xml:id="commandLineRef"><title>Command Line Reference</title><para>bdBuild is a node program located at bdBuild/lib/main.js. The command line may indicates zero
             of more build control scripts and/or build control object properties. </para>
-        <para>bdBuild recognizes four different patterns for build control scripts, and each pattern
-            is associated with a specific command line flag as given in xxx. The command line will
-            accept any number of build control script arguments. If multiple build control scripts
-            are given, then bdBuild will mix the properties contained in all of the designated
-            scripts, left-to-right, with right-side BCS properties overwriting left-side BCS
-            properties as they are processed:<footnote><para>The default build control script located at bdBuild/lib/defaultBuildControl.js is always implied as the left-most, initial value for the build control script.</para></footnote><itemizedlist>
+        <para>bdBuild recognizes three different patterns for build control scripts, and each
+            pattern is associated with a specific command line flag as given in <xref linkend="bcsFormat"/>. The command
+            line will accept any number of build control script arguments. If multiple build control
+            scripts are given, then bdBuild will mix the properties contained in all of the
+            designated scripts, left-to-right, with right-side BCS properties overwriting left-side
+            BCS properties as they are processed:<footnote>
+                <para>The default build control script located at bdBuild/lib/defaultBuildControl.js
+                    is always implied as the left-most, initial value for the build control
+                    script.</para>
+            </footnote><itemizedlist>
                 <listitem>
                     <para>package items are mixed on a per-package-property basis. For example, if a
                         left-side and a right-side BCS define the same package (that is, a package
@@ -1777,19 +1728,19 @@ require({
                     <para>staticHasFlags are mixed on a per-feature-name basis.</para>
                 </listitem>
                 <listitem>
-                    <para>all other propeties are mixed on a per property based. For example, if a
+                    <para>all other properties are mixed on a per property based. For example, if a
                         left-side and a right-side BCS both define a <code>trees</code> property,
                         then the left-side <code>s</code> property will be ignored and the
                         right-side <code>trees</code> property used.</para>
                 </listitem>
             </itemizedlist></para>
-        <para>If any command line flag other than <code>--build</code>, <code>--amd</code>,
-                <code>--require</code>, or <code>--loader</code> is provided, then that argument is
-            assumed to designate a build control object property value (a string). No check is made
-            to see that the value is rational since user-defined discovery procedures and transforms
-            may define build control property values not known to bdBuild. If any such properties
-            are provided on the command line, they can be visualized initializing a right-side build
-            control script "on the fly". For example, the command line...</para>
+        <para>If any command line flag other than <code>--build</code>, <code>--require</code>, or
+                <code>--loader</code> is provided, then that argument is assumed to designate a
+            build control object property value (a string). No check is made to see that the value
+            is rational since user-defined discovery procedures and transforms may define build
+            control property values not known to bdBuild. If any such properties are provided on the
+            command line, they can be visualized initializing a right-side build control script "on
+            the fly". For example, the command line...</para>
         <para>
             <screen>node ../bdLoad/lib/main.js --build myPackage --someProperty someValue</screen>
         </para>
@@ -1803,13 +1754,12 @@ require({
         </para>
         <para>An then issuing the command...</para>
         <para>
-            <screen>node ../bdLoad/lib/main.js --build myPackage --myQuickie</screen>
+            <screen>node ../bdLoad/lib/main.js -b myPackage -b myQuickie</screen>
         </para>
         <para>If no build control script argument is provided to bdBuild, then bdBuild will attempt
             to read the file "config.js" in the current directory as if it was specified with a
                 <code>--require</code> flag.</para></sect1>
-    <sect1><title>Recipes</title><para>This sections gives a number of build control script recipes that are both useful examples and
-            used in their own right. All of these scripts are available at xxx.</para></sect1>
+    <sect1><title>Recipes</title><para>TODO</para></sect1>
 
     <sect1 xml:id="midMapping"><title>AMD Module Identifier to Filename Mapping Algorithm</title><para>The mapping algorithm used to map AMD module identifiers to filenames in bdBuild is very
             nearly identical to the algorithm used to map AMD module identifiers to URLs in bdLoad.
@@ -1862,6 +1812,49 @@ require({
                 </listitem>
             </orderedlist>
         </para>
+    </sect1>
+    <sect1 xml:id="extending">
+        <title>Writing Custom Discovery and Transform Processes</title>
+        <para>TODOC</para>
+        <sect2>
+            <title>Writing a Custom Discovery Process</title>
+            <para>TODOC</para>
+        </sect2>
+        <sect2>
+            <title>Writing a Custom Transform</title>
+            <para>TODOC</para>
+        </sect2>
+        <sect2>
+            <title>Design and Implementation</title>
+            <para>Although highly capable, the bdBuild program design and implementation is also
+                quite simple. The main program control machinery is implemented in
+                <filename>bdBuild/lib/main.js</filename>. The code contained loads the AMD
+                loader (bdLoad) which loads the remainder of the program. Once loaded, control is
+                transferred to the module <filename>bdLoad/lib/argv</filename> which processes the
+                command line, and then to <filename>bdload/lib/buildControl</filename> which
+                computes the build control object that controls how bdBuild discovers and transforms
+                resources.</para>
+            <para><filename>bdLoad/lib/buildControl</filename> is tedious but straightforward module
+                that mixes build control scripts, resolves all relative paths to absolute paths, and
+                fills in missing BCS properties with defaults. When bdBuild isn't doing what you
+                expect, the cause usually lies in an improperly specified property somewhere in one
+                or another build control scripts. One of the best ways to diagnose this problem is
+                to run the command line argument <code>--unit-test dumpbc</code> which dumps the
+                fully computed build control object. You will see lots of internal properties in
+                this object, but they are all well-named and their semantics obvious.</para>
+            <para>Once the build control object is computed, all of the transform and plugin modules
+                are loaded by the AMD loader and then the discovery process(es) are started. As each
+                resource is discovered, the discovery process creates a resource object and
+                publishes that object to the function <code>start</code> contained in
+                <filename>bdLoad/lib/main</filename>. This function ensures that no two
+                resources are attempting to write to the same destination, and then enters the
+                resource in the engine that moves resources through the ordered set of gates. The
+                functions <code>advance</code> and <code>passGate</code> synchronize and move
+                resources through their prescribed set of transforms. When all resources have been
+                moved though all gates, bdBuild prints a message and terminates. If an error occurs
+                along the way, bdBuild allows the process to complete through the current
+                synchronized gate and then terminates.</para>
+        </sect2>
     </sect1>
     <!--
     <sect1>

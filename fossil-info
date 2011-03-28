@@ -1,9 +1,9 @@
 project-name: bdBuild
 repository:   /home/rcgill/fossils/bdBuild.fossil
-local-root:   /usr/home/rcgill/git-mirrors/bdBuild/work/
+local-root:   /home/rcgill/git-mirrors/bdBuild/work/
 project-code: 5e66e406d112e9adee6d4a0ad02a58dc760e1143
 server-code:  4a96ae05c57ab87127b9972cb6c97e51bce21dd8
-checkout:     aed1c50eaa5ff365b3ce2a77532dd1db39cf3792 2011-03-02 11:36:09 UTC
-parent:       5dff2a6db8293b9e6f2d1dc7c4b8d424f4e89903 2011-03-02 10:11:31 UTC
+checkout:     af2a66a9893adf2f94ed2c95c9523ce192272836 2011-03-27 22:23:47 UTC
+parent:       aed1c50eaa5ff365b3ce2a77532dd1db39cf3792 2011-03-02 11:36:09 UTC
 tags:         trunk
-comment:      updated tutorial; removed cruft (user: rcgill)
+comment:      updated tutorial (user: rcgill)
